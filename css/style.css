@@ -1,0 +1,565 @@
+/* Monthly Report - all rules scoped under .mis so they do not leak into the Fiori shell */
+.mis {
+  --bg: #f3f4f6;
+  --card: #fff;
+  --ink: #1b2430;
+  --muted: #5f6b7a;
+  --line: #e6e9ee;
+  --primary: #0a66d8;
+  --up: #1a7f37;
+  --down: #c0152b;
+  --prevbar: #c6ebd0;
+  --curbar: #1f9d55;
+}
+.mis * {
+  box-sizing: border-box;
+}
+.mis {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family:
+    "Segoe UI",
+    "72",
+    system-ui,
+    -apple-system,
+    Arial,
+    sans-serif;
+  font-size: 14px;
+}
+.mis header {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.mis .crumb {
+  font-size: 12px;
+  color: var(--muted);
+}
+.mis h1 {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.mis .filters {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.mis .filters label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  color: var(--muted);
+  gap: 3px;
+}
+.mis select {
+  height: 32px;
+  border: 1px solid #c5ccd6;
+  border-radius: 6px;
+  padding: 0 8px;
+  background: #fff;
+  font-size: 13px;
+  min-width: 110px;
+}
+.mis #company {
+  min-width: 210px;
+}
+.mis button {
+  height: 32px;
+  padding: 0 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--primary);
+}
+.mis .btn-go {
+  background: var(--primary);
+  color: #fff;
+}
+.mis .btn-export {
+  background: #fff;
+  color: var(--primary);
+  padding: 0 14px;
+}
+.mis .btn-export:hover {
+  background: #eef5ff;
+}
+.mis main {
+  padding: 16px 20px;
+  display: grid;
+  gap: 16px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+.mis .kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.mis .cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.mis .stack {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .mis .kpis,
+  .mis .cols {
+    grid-template-columns: 1fr;
+  }
+}
+.mis .card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+  min-width: 0;
+  position: relative;
+}
+.mis .click {
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.mis .click:hover {
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.16);
+}
+.mis .click::after {
+  content: "›";
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  font-size: 24px;
+  line-height: 1;
+  color: #9aa4b2;
+}
+.mis .kpi .lbl {
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.mis .kpi .val {
+  font-size: 34px;
+  font-weight: 600;
+  margin: 8px 0 6px;
+  letter-spacing: -0.5px;
+  text-align: right;
+}
+.mis .kpi .val small {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+.mis .kpi .sub {
+  font-size: 17.5px;
+  font-weight: 500;
+  text-align: right;
+}
+.mis .up {
+  color: var(--up);
+}
+.mis .down {
+  color: var(--down);
+}
+.mis .neutral {
+  color: var(--muted);
+}
+.mis .card h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mis .card .meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin: 2px 0 10px;
+}
+.mis table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.mis th {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: right;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.mis td {
+  padding: 8px;
+  text-align: right;
+  border-bottom: 1px solid #f0f2f5;
+  white-space: nowrap;
+}
+.mis th:first-child,
+.mis td:first-child {
+  text-align: left;
+  padding-left: 0;
+}
+.mis th:last-child,
+.mis td:last-child {
+  padding-right: 0;
+}
+.mis th.grp {
+  text-align: center;
+  border-left: 1px solid var(--line);
+}
+.mis tr.total td {
+  font-weight: 700;
+  border-bottom: none;
+  border-top: 1px solid var(--line);
+}
+.mis tr.memo td {
+  color: var(--muted);
+  font-style: italic;
+}
+.mis tr.grprow td {
+  background: #f6f8fa;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: left;
+  padding-left: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.mis .ytdc {
+  border-left: 1px solid var(--line);
+  font-weight: 600;
+}
+.mis .scroll {
+  overflow-x: auto;
+}
+.mis table.mini {
+  margin-top: 8px;
+  font-size: 13.5px;
+}
+.mis table.mini td:first-child {
+  font-weight: 600;
+}
+.mis table.dense {
+  font-size: 13px;
+}
+.mis table.mini th,
+.mis table.mini td,
+.mis table.dense th,
+.mis table.dense td {
+  padding: 8px 6px;
+}
+.mis table.mini th:first-child,
+.mis table.mini td:first-child,
+.mis table.dense th:first-child,
+.mis table.dense td:first-child {
+  padding-left: 0;
+}
+.mis table.mini th:last-child,
+.mis table.mini td:last-child,
+.mis table.dense th:last-child,
+.mis table.dense td:last-child {
+  padding-right: 0;
+}
+.mis .link {
+  margin: 14px 0 0;
+}
+.mis a {
+  color: var(--primary);
+}
+.mis .legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.mis .legend i {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+.mis #banner {
+  display: none;
+  background: #fff4e5;
+  color: #7a4a00;
+  border: 1px solid #f5d29b;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+.mis .note {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+.mis svg text {
+  font-family: inherit;
+}
+.mis .vscroll {
+  max-height: 370px;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+}
+.mis .vscroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.mis .vscroll th,
+.mis .vscroll td {
+  border-bottom: 1px solid #f0f2f5;
+}
+.mis .vscroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fff;
+  height: 32px;
+  border-bottom: 1px solid var(--line);
+}
+.mis .vscroll thead tr:nth-child(2) th {
+  top: 32px;
+}
+.mis .vscroll thead th.fc {
+  left: 0;
+  z-index: 5;
+}
+.mis .vscroll tbody td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+}
+.mis .vscroll tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #fff;
+  border-top: 2px solid var(--line);
+  border-bottom: none;
+  font-weight: 700;
+}
+.mis .vscroll tfoot td:first-child {
+  left: 0;
+  z-index: 4;
+}
+.mis #modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 50;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 16px;
+  overflow: auto;
+}
+.mis #modal.open {
+  display: flex;
+}
+.mis .sheet {
+  background: #fff;
+  border-radius: 14px;
+  max-width: 1280px;
+  width: 100%;
+  padding: 20px 24px 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+.mis .sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  gap: 16px;
+}
+.mis .sheet-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.mis .sheet-head .meta {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.mis .sheet-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.mis .x {
+  border: 0;
+  background: none;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--muted);
+  height: auto;
+  padding: 0 4px;
+}
+.mis {
+  min-height: 100%;
+}
+/* Scroll fix: the sap.m.Page in App.view.xml owns vertical scrolling */
+.misPage > section {
+  overflow-y: auto;
+}
+
+.mis .btn-out {
+  background: #fff;
+  color: var(--muted);
+  border-color: #c5ccd6;
+  padding: 0 14px;
+}
+.mis .btn-out:hover {
+  background: #f3f4f6;
+}
+.mis #login {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(16, 24, 40, 0.55);
+  align-items: center;
+  justify-content: center;
+}
+.mis .login-box {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px 26px;
+  width: min(360px, 92vw);
+  display: grid;
+  gap: 12px;
+  box-shadow: 0 12px 40px rgba(16, 24, 40, 0.3);
+}
+.mis .login-box h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.mis .login-box label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--muted);
+  gap: 4px;
+}
+.mis .login-box input {
+  height: 36px;
+  border: 1px solid #c5ccd6;
+  border-radius: 6px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+.mis .login-box input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+}
+.mis #loginErr {
+  color: var(--down);
+  font-size: 13px;
+  min-height: 16px;
+}
+.mis .login-box button {
+  width: 100%;
+  height: 38px;
+}
+
+/* ---- Home screen (tile launcher) ---- */
+.launcher {
+  min-height: 100%;
+  background: #f3f4f6;
+  padding: 20px;
+  font-family: "Segoe UI", "72", system-ui, -apple-system, Arial, sans-serif;
+  color: #1b2430;
+}
+.launcher h1 {
+  margin: 0 0 16px;
+  font-size: 22px;
+}
+.launcherGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+.launcherTile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  background: #fff;
+  border: 1px solid #e6e9ee;
+  border-radius: 14px;
+  padding: 18px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.launcherTile:active {
+  background: #eef4fd;
+}
+.launcherIcon {
+  font-size: 30px;
+}
+.launcherName {
+  font-size: 17px;
+  font-weight: 600;
+}
+.launcherSub {
+  font-size: 13px;
+  color: #5f6b7a;
+}
+.launcherBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border-bottom: 1px solid #e6e9ee;
+  padding: 8px 12px;
+  font-family: "Segoe UI", "72", system-ui, -apple-system, Arial, sans-serif;
+}
+.launcherBack {
+  background: none;
+  border: 1px solid #c9d1db;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font: inherit;
+  cursor: pointer;
+  color: #0a66d8;
+}
+.launcherBarTitle {
+  font-weight: 600;
+}
+
+/* ---- Phone fix: grid tracks must be allowed to shrink so wide tables scroll inside their card ---- */
+.mis main {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mis .stack {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mis .stack > *,
+.mis main > * {
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  .mis .kpis,
+  .mis .cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

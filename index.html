@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Monthly Report</title>
+    <script src="android-shim.js"></script>
+    <style>
+      html,
+      body,
+      body > div,
+      #container,
+      #container-uiarea {
+        height: 100%;
+      }
+    </style>
+    <script>
+      /* Local dev server serves UI5 at ./resources; on the ABAP server (BSP app) it lives at /sap/public/bc/ui5_ui5/resources */
+      (function () {
+        var sCore =
+          location.pathname.indexOf("/sap/bc/ui5_ui5/") === 0
+            ? "/sap/public/bc/ui5_ui5/resources/sap-ui-core.js"
+            : "resources/sap-ui-core.js";
+        document.write(
+          '<script id="sap-ui-bootstrap" src="' +
+            sCore +
+            '"' +
+            ' data-sap-ui-theme="sap_horizon"' +
+            ' data-sap-ui-resource-roots=\'{"zmisreport": "./"}\'' +
+            ' data-sap-ui-on-init="module:sap/ui/core/ComponentSupport"' +
+            ' data-sap-ui-compat-version="edge"' +
+            ' data-sap-ui-async="true"' +
+            ' data-sap-ui-frame-options="trusted"><\/script>',
+        );
+      })();
+    </script>
+  </head>
+  <body class="sapUiBody sapUiSizeCompact" id="content">
+    <div
+      data-sap-ui-component
+      data-name="zmisreport"
+      data-id="container"
+      data-settings='{"id" : "zmisreport"}'
+      data-handle-validation="true"
+    ></div>
+  </body>
+</html>

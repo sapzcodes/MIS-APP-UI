@@ -1,0 +1,447 @@
+/* SAP Fiori Horizon – PL Dashboard — Sub-card Redesign */
+/* Change log (this session):
+   - Sub-card expand: hover-only. attachSubCardToggle() and .sub-card--expanded
+     removed from JS entirely. All expand animation driven by CSS :hover.
+   - Tile popup: fixed "only opens once" bug. openPopup() now strips is-visible,
+     forces reflow via void offsetHeight, then re-adds is-visible so the browser
+     always sees a fresh 0→1 opacity/transform transition on every open.
+     ESC listener guarded with _escBound flag — registered only once.
+   - All other rules unchanged from previous session. */
+
+/* RIGHT COLUMN FILL CHANGE LOG (27 Oct 2026, evening):
+   1. .dash-two-col align-items start -> stretch: both columns get the same height.
+   2. .tile--grow: last tile of the right column (Ageing Mix) grows into the free space.
+   3. .cost-line: COGM % as one line inside the Stock & Rejection & Cost tile.
+   4. .ag-* : Ageing Mix chart (pure CSS bars, scales with the tile height). */
+
+/* COMPACT LAYOUT CHANGE LOG (27 Oct 2026):
+   Reason: all tiles should fit one screen without losing the airy look.
+   Only vertical spacing was reduced, horizontal spacing and font sizes are unchanged
+   (except the Production Order hover size).
+   1. main padding, .section-label margin, .dash-two-col / .dash-col gaps tightened.
+   2. .tile-hdr padding 13/11 -> 9/8 (empty band under each heading removed).
+   3. .sub-row and .prod-order-row vertical padding 12/14 -> 8/10 (prod order 6/8).
+   4. .sub-card padding 10/12 -> 8/10, .sub-card-hdr margin-bottom 8 -> 4.
+   5. Production Order hover calmed: no lift / scale, value 28px -> 17px on hover
+      (popup keeps its own bigger size). */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: '72', '72full', Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  background: #eef0f2;
+  color: #1b3a52;
+  min-height: 100vh;
+}
+
+/* ── Login ── */
+#login-screen {
+  position: fixed; inset: 0; background: #f5f6f7;
+  display: flex; align-items: center; justify-content: center; z-index: 999;
+}
+.login-box {
+  background: #fff; border: 1px solid #d9d9d9; border-radius: 6px;
+  padding: 36px 32px 28px; width: 340px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+}
+.login-logo { font-size: 20px; font-weight: 700; color: #0070f2; margin-bottom: 3px; }
+.login-sub  { font-size: 13px; color: #6a6d70; margin-bottom: 20px; }
+.login-box label, .login-box .opt-label {
+  font-size: 13px; font-weight: 700; color: #32363a; display: block; margin-bottom: 3px;
+}
+.opt-hint { font-size: 11px; font-weight: 400; color: #9da0a4; margin-left: 4px; }
+.login-box input {
+  width: 100%; border: 1px solid #89919a; border-radius: 4px;
+  padding: 7px 10px; font-size: 14px; font-family: inherit;
+  color: #32363a; background: #fff; margin-bottom: 11px;
+  outline: none; transition: border-color 0.15s;
+}
+.login-box input:focus { border-color: #0070f2; box-shadow: 0 0 0 2px rgba(0,112,242,0.15); }
+.login-btn {
+  width: 100%; background: #0070f2; color: #fff; border: none;
+  padding: 9px; border-radius: 4px; font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; transition: background 0.15s;
+}
+.login-btn:hover { background: #0060cc; }
+.login-err { color: #bb0000; font-size: 13px; margin-top: 7px; display: none; }
+
+/* ── Shell Header ── */
+header {
+  background: #1b3a52; min-height: 46px; padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 5px;
+  position: sticky; top: 0; z-index: 10;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+}
+.shell-title {
+  font-size: 15px; font-weight: 700; color: #fff;
+  white-space: nowrap; padding: 10px 0;
+  display: flex; align-items: center; gap: 12px;
+}
+.shell-title span { opacity: 0.65; font-weight: 400; margin-left: 8px; font-size: 13px; }
+.shell-title em { color: #4caf7d; font-style: normal; }
+.shell-right { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.shell-badge {
+  font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 4px;
+  color: #fff; background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.22); white-space: nowrap;
+  display: flex; align-items: center; gap: 5px;
+}
+.shell-badge.date { font-weight: 400; }
+.shell-badge svg { opacity: 0.75; }
+.shell-btn {
+  border: 1px solid rgba(255,255,255,0.35); background: transparent; color: #fff;
+  padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background 0.15s;
+}
+.shell-btn:hover { background: rgba(255,255,255,0.12); }
+.shell-btn.primary { background: rgba(255,255,255,0.16); }
+.shell-btn.primary:hover { background: rgba(255,255,255,0.26); }
+
+/* ── Main ── */
+main { padding: 10px 20px 14px; }
+
+.section-label {
+  font-size: 16px; font-weight: 600; color: #1b3a52;
+  margin-bottom: 8px; padding-left: 2px;
+}
+
+.err-bar {
+  background: #fff4f4; border: 1px solid #ffb3b3;
+  border-left: 4px solid #bb0000; color: #bb0000;
+  padding: 9px 13px; border-radius: 4px; font-size: 13px;
+  margin-bottom: 12px; display: none;
+}
+
+/* ── Loading spinner ── */
+.loading-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 0; gap: 12px;
+}
+.loading-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid #d9d9d9; border-top-color: #0070f2;
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: #9da0a4; letter-spacing: 0.2px; }
+
+/* ── Dashboard grid ── */
+.dash-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: stretch;   /* both columns same height, last tile of the shorter one grows */
+}
+.dash-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── TILE: outer card ── */
+.tile {
+  background: #fff;
+  border: 1px solid #d8dde3;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Tile header ── */
+.tile-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 16px 8px;
+  border-bottom: 1px solid #e8ecf0;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.tile-hdr:hover { background: #f5f8fb; }
+.tile-hdr-left { display: flex; align-items: center; gap: 9px; }
+.tile-hdr-icon { width: 22px; height: 22px; flex-shrink: 0; color: #1b3a52; }
+.tile-hdr-title { font-size: 15px; font-weight: 700; color: #1b3a52; }
+.tile-hdr small { display: none; }
+.tile-hdr-chevron { color: #9da0a4; font-size: 18px; line-height: 1; }
+
+/* ── Sub-card row ── */
+.sub-row {
+  display: grid;
+  padding: 8px 12px 10px;
+  gap: 10px;
+}
+.sub-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.sub-row.cols-2 { grid-template-columns: 1fr 1fr; }
+
+/* ── Individual sub-card ──
+   Hover-driven expand: all visual changes live in :hover rules.
+   No JS class toggling needed — cleaner, no stale-state bugs.
+   transform + box-shadow stay on GPU layer = zero jank.
+   font-size transitions on children all share the same duration
+   so they animate as one unified motion. */
+.sub-card {
+  border: 1px solid #e0e5ea;
+  border-radius: 6px;
+  padding: 8px 10px 10px;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: box-shadow 0.22s ease, border-color 0.22s ease, transform 0.22s ease;
+  transform-origin: center top;
+  will-change: transform, box-shadow;
+}
+
+.sub-card:hover {
+  box-shadow: 0 8px 24px rgba(27, 58, 82, 0.16);
+  border-color: #0070f2;
+  transform: translateY(-2px) scale(1.025);
+}
+
+/* Title colour shift on hover */
+.sub-card:hover .sub-card-hdr-title { color: #0070f2; }
+
+/* ── All animating children share one transition declaration ──
+   Same duration as the card so everything moves together. */
+.sub-card-hdr-title,
+.sub-val-amount,
+.sub-val-label,
+.pvs-label,
+.pvs-val,
+.cost-pct-compact-val,
+.prod-order-val {
+  transition: font-size 0.22s ease, color 0.22s ease;
+}
+
+/* Font bumps on hover */
+.sub-card:hover .sub-val-amount      { font-size: 19px; }
+.sub-card:hover .sub-val-label       { font-size: 12px; }
+.sub-card:hover .sub-card-hdr-title  { font-size: 13px; }
+.sub-card:hover .pvs-label           { font-size: 12px; }
+.sub-card:hover .pvs-val             { font-size: 15px; }
+.sub-card:hover .cost-pct-compact-val { font-size: 20px; }
+.sub-card:hover .prod-order-val      { font-size: 17px; }
+
+/* Production Order cards: calm hover (no lift, no zoom, light shadow) */
+.prod-order-card:hover {
+  transform: none;
+  box-shadow: 0 2px 8px rgba(27, 58, 82, 0.12);
+}
+
+/* ── Sub-card header ── */
+.sub-card-hdr {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 4px;
+}
+.sub-card-hdr-icon { color: #1b3a52; flex-shrink: 0; }
+.sub-card-hdr-title { font-size: 12px; font-weight: 600; color: #1b3a52; }
+
+/* ── Value block ── */
+/* Reason: amounts and quantities right-aligned per accounting UI convention */
+.sub-val-block { margin-top: 4px; }
+.sub-val-label { font-size: 11px; color: #6a7a8a; margin-bottom: 3px; text-align: right; }
+.sub-val-amount {
+  font-size: 15px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+  text-align: right;
+}
+
+/* ── Production vs Sales: row-wise ── */
+.pvs-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid #f0f2f4;
+}
+.pvs-row:last-child { border-bottom: none; }
+.pvs-label { font-size: 11px; color: #6a7a8a; }
+.pvs-val {
+  font-size: 13px; font-weight: 600; color: #1b3a52;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ── Cost cards (compact, inside Stock & Rejection & Cost tile) ── */
+/* Reason: COGS/COGM merged into Stock & Rejection tile to save space.
+   Smaller font, green color, text-center, no extra padding needed. */
+.cost-pct-compact {
+  text-align: center;
+  padding: 8px 10px 10px;
+}
+.cost-pct-compact-val {
+  font-size: 16px; font-weight: 700; color: #107e3e;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
+}
+
+/* ── Production Order cards ── */
+.prod-order-row {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px; padding: 6px 12px 8px;
+}
+.prod-order-card { text-align: center; padding: 8px 10px 10px; }
+.prod-order-label { font-size: 11px; color: #6a7a8a; margin-bottom: 4px; }
+.prod-order-val {
+  font-size: 15px; font-weight: 700; color: #1b3a52;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── COGM single line (inside Stock & Rejection & Cost tile) ── */
+.cost-line {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px;
+  border: 1px solid #e0e5ea; border-radius: 6px; background: #fff;
+}
+.cost-line-lbl {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: #1b3a52;
+}
+.cost-line-lbl svg { width: 16px; height: 16px; }
+.cost-line-val {
+  font-size: 16px; font-weight: 700; color: #107e3e;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tile that grows to fill the column (Ageing Mix) ── */
+.tile--grow { flex: 1; }
+.tile--grow .tile-body {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 8px 14px 10px;
+}
+
+/* ── Ageing Mix chart ── */
+.ag-legend {
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  font-size: 11px; color: #6a7a8a; margin-bottom: 6px;
+}
+.ag-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.ag-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.ag-chart {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: space-around; gap: 6px;
+}
+.ag-row {
+  display: grid; grid-template-columns: 64px 1fr 104px;
+  align-items: center; gap: 8px;
+}
+.ag-lbl { font-size: 12px; font-weight: 600; color: #1b3a52; }
+.ag-track { height: 18px; background: #f0f2f4; border-radius: 4px; overflow: hidden; }
+.ag-bar { display: flex; height: 100%; }
+.ag-seg { display: block; height: 100%; }
+.ag-tot {
+  font-size: 12px; font-weight: 600; color: #1b3a52; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ag-a { background: #9fb7cc; }
+.ag-b { background: #e76500; }
+.ag-c { background: #bb0000; }
+
+/* ── Colour tokens ── */
+.income   { color: #107e3e; }
+.expense  { color: #0070f2; }
+.pos      { color: #bb0000; }
+.neg      { color: #107e3e; }
+.zero-val { color: #9da0a4; }
+.neutral  { color: #32363a; }
+.warn     { color: #e76500; }
+
+/* ── Legacy classes ── */
+.tbl-hdr { display: none; }
+.tbl-row { display: none; }
+.kpi-row { display: none; }
+
+/* ────────────────────────────────────────────────────
+   TILE POPUP
+   Fix: openPopup() strips is-visible + forces reflow
+   before re-adding, so CSS transition fires fresh on
+   every open. ESC listener registered only once via
+   _escBound flag on document.
+   ──────────────────────────────────────────────────── */
+
+.tile-popup-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(10, 24, 38, 0.55);
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+.tile-popup-backdrop.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.tile-popup {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -48%) scale(0.97);
+  z-index: 201;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(10, 24, 38, 0.28);
+  width: min(92vw, 780px);
+  max-height: 82vh;
+  overflow-y: auto;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.tile-popup.is-visible {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: auto;
+}
+
+.tile-popup-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid #e8ecf0;
+  position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.tile-popup-hdr-left { display: flex; align-items: center; gap: 10px; }
+.tile-popup-hdr-icon { width: 22px; height: 22px; flex-shrink: 0; }
+.tile-popup-hdr-title { font-size: 16px; font-weight: 700; color: #1b3a52; }
+.tile-popup-close {
+  background: none; border: none; cursor: pointer;
+  color: #6a7a8a; font-size: 22px; line-height: 1;
+  padding: 2px 6px; border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.tile-popup-close:hover { background: #f0f4f8; color: #1b3a52; }
+
+.tile-popup-body { padding: 4px 8px 16px; }
+
+/* Sub-cards inside popup are slightly larger by default */
+.tile-popup-body .sub-card         { padding: 14px 16px 16px; }
+.tile-popup-body .sub-val-amount   { font-size: 17px; }
+.tile-popup-body .sub-card-hdr-title { font-size: 13px; }
+.tile-popup-body .pvs-val          { font-size: 15px; }
+.tile-popup-body .pvs-label        { font-size: 12px; }
+.tile-popup-body .cost-pct-compact-val { font-size: 20px; }
+.tile-popup-body .prod-order-val   { font-size: 26px; }
+.tile-popup-body .prod-order-label { font-size: 12px; }
+/* keep the popup size on hover too (the general hover rule would shrink it) */
+.tile-popup-body .sub-card:hover .prod-order-val { font-size: 28px; }
+
+/* ── Footer ── */
+footer {
+  text-align: center; padding: 10px; font-size: 12px; color: #9da0a4;
+  border-top: 1px solid #d9d9d9; margin-top: 14px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .dash-two-col { grid-template-columns: 1fr; }
+  main { padding: 8px; }
+  .sub-row.cols-3 { grid-template-columns: 1fr; }
+  .sub-row.cols-2 { grid-template-columns: 1fr; }
+  .prod-order-row { grid-template-columns: 1fr; }
+  .cost-pct-row--prominent { grid-template-columns: 1fr; }
+  .tile-popup { width: 96vw; max-height: 88vh; }
+}

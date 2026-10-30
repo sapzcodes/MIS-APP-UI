@@ -1,0 +1,86 @@
+{
+  "version": "6b580a85c0e5",
+  "minApk": 4,
+  "files": [
+    {
+      "path": "Component.js",
+      "sha256": "9f3fb3c8be1873fb8df8851ac1064d983d3a15b82fc0eeb8c402b594c6f176ad",
+      "size": 253
+    },
+    {
+      "path": "android-shim.js",
+      "sha256": "500508ad3c4bb793146a0fb0cc1b7670267da0e37970bc8339e091a6b9f7208c",
+      "size": 1311
+    },
+    {
+      "path": "annotations/annotation.xml",
+      "sha256": "4bc904830667c24fcaf36b9bfc202d5f60a5e7e5af2cbc89e721a9e88bb9613f",
+      "size": 987
+    },
+    {
+      "path": "controller/App.controller.js",
+      "sha256": "ecc5babd8bfa81c507cf6060baf38eb15f615c3c1d0b78355f4fd2acb9095221",
+      "size": 4309
+    },
+    {
+      "path": "css/style.css",
+      "sha256": "03292c485c83b920e2b58a84e156a2fb69e255d584e4cd6e6529b197bd474a6e",
+      "size": 10116
+    },
+    {
+      "path": "i18n/i18n.properties",
+      "sha256": "d8601e7f29cd45719067513fdf8243cc13b0332bb8199a5c7edf7243c6bc013b",
+      "size": 259
+    },
+    {
+      "path": "index.html",
+      "sha256": "71022d301b0cc298991ff2a80d9bc3da4e289dee7e6cdea2042aaf89a6edc80a",
+      "size": 1546
+    },
+    {
+      "path": "js/dashboards.js",
+      "sha256": "128065a3144bcc575a1af89dd7dc2ee50b7e869af3abeaaece60cadb2caaf854",
+      "size": 871
+    },
+    {
+      "path": "js/mis.js",
+      "sha256": "a1f3adba5993cdb1d0ec2785a47260b93aa6675802e04cb96d8502f792edde8b",
+      "size": 35574
+    },
+    {
+      "path": "js/zfidash.js",
+      "sha256": "079ea5bc6fe6649da0340617ab983691deb5f7980e90b14c08c396885860e8f8",
+      "size": 988
+    },
+    {
+      "path": "libs/xlsx.full.min.js",
+      "sha256": "c9506197caf809a075b6dee1da0d36fb19da7158ffe8a88e7b0c96c5d8623c99",
+      "size": 881727
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "df4c30195af4c28a0874e93ff17d6190e04e08002896ab9eec4c3b33e36620e0",
+      "size": 1472
+    },
+    {
+      "path": "view/App.view.xml",
+      "sha256": "5758e3b25fb213a9cfa9f9f5eae982fcbca85611c92ed58eea626a6de377362a",
+      "size": 436
+    },
+    {
+      "path": "zfidash/css/style.css",
+      "sha256": "0a7cd4b32734c03f771775b6cdcc72c220a40296ecef090f5d69812f8f130f14",
+      "size": 16395
+    },
+    {
+      "path": "zfidash/index.html",
+      "sha256": "0d5999b29053b1fc34c30d1459e08c77b7f4f33882f407cbf64a907b55b3ac37",
+      "size": 2555
+    },
+    {
+      "path": "zfidash/js/dashboard.js",
+      "sha256": "27d0d15f9ef397c152ccb850e40099b825935ce61f8aa64f8c060baa21edfe60",
+      "size": 31653
+    }
+  ]
+}

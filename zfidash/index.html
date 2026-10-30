@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PerfectEngg — P&L Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">PerfectEngg</div>
+    <div class="login-sub">P&amp;L Dashboard — Enter your parameters to continue</div>
+    <label>Company Code</label>
+    <input type="text" id="inp-bukrs" placeholder="e.g. 1000" maxlength="4" />
+    <label>Fiscal Year</label>
+    <input type="text" id="inp-year" placeholder="e.g. 2026" maxlength="4" />
+    <label>FS Version</label>
+    <input type="text" id="inp-versn" placeholder="e.g. PEPL" maxlength="4" />
+    <label class="opt-label">Date <span class="opt-hint">optional — defaults to today</span></label>
+    <input type="date" id="inp-date" />
+    <button class="login-btn" onclick="doLogin()">Load Dashboard</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<header>
+  <div class="shell-title">PerfectEngg <span>P&amp;L Dashboard</span></div>
+  <div class="shell-right">
+    <span class="shell-badge date" id="hdr-date"></span>
+    <span class="shell-badge" id="hdr-bukrs"></span>
+    <span class="shell-badge" id="hdr-year"></span>
+    <span class="shell-badge" id="hdr-versn"></span>
+    <button class="shell-btn" onclick="changeParams()">Change</button>
+    <button class="shell-btn primary" onclick="loadPL()">Refresh</button>
+  </div>
+</header>
+
+<main>
+  <div class="err-bar" id="err-bar"></div>
+
+  <div class="date-group">
+    <div class="section-hdr">
+      <div class="section-hdr-label">Till Given Date</div>
+      <div class="section-hdr-line"></div>
+    </div>
+    <div class="tile-grid" id="grid-A">
+      <div class="loading-msg">Loading…</div>
+    </div>
+  </div>
+
+  <div class="date-group">
+    <div class="section-hdr">
+      <div class="section-hdr-label">Till Previous Date</div>
+      <div class="section-hdr-line"></div>
+    </div>
+    <div class="tile-grid" id="grid-B">
+      <div class="loading-msg">Loading…</div>
+    </div>
+  </div>
+
+  <div class="date-group">
+    <div class="section-hdr">
+      <div class="section-hdr-label">For Date</div>
+      <div class="section-hdr-line"></div>
+    </div>
+    <div class="tile-grid" id="grid-C">
+      <div class="loading-msg">Loading…</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  SAP S/4HANA &nbsp;·&nbsp; pedevqas.perfect.com
+</footer>
+
+<script src="js/dashboard.js"></script>
+</body>
+</html>
