@@ -1,5 +1,5 @@
 {
-  "version": "6b580a85c0e5",
+  "version": "8cb8bed82ef3",
   "minApk": 4,
   "files": [
     {
@@ -69,8 +69,8 @@
     },
     {
       "path": "zfidash/css/style.css",
-      "sha256": "0a7cd4b32734c03f771775b6cdcc72c220a40296ecef090f5d69812f8f130f14",
-      "size": 16395
+      "sha256": "70739ce66d7472ff29a54b680982f0e7679e5544ea5136f872ff1384ae9ec2fa",
+      "size": 15949
     },
     {
       "path": "zfidash/index.html",
