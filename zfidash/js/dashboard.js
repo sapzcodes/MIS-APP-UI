@@ -1,9 +1,6 @@
 (function () {
   "use strict";
 
-  /* ANDROID APP (MIS-Report.apk): no SAP login lives in this file (it is hosted publicly).
-     The native shell injects the Authorization header and sap-client into every /sap/* request. */
-
   /* Change log (this session):
      - Sub-card expand: transition jank fixed. Removed padding from transition on .sub-card.
        Only transform+box-shadow+border transition on the card; font-size transitions
@@ -90,7 +87,120 @@
         Built from existing CDS fields (SUNDRY_*_TOT / _60 / _120), no CDS change.
         outerTile() got an optional 4th argument (extra CSS class). */
 
+  /* DASH v6 CHANGE LOG (28 Oct 2026):
+     1. Brand label is no longer hardcoded "PerfectEngg". setBrand() writes the company name
+        (CDS company_name) into #login-brand (login card) and #hdr-brand (header) and the page
+        title. Before the data arrives it shows the company code; empty -> "Dashboard".
+        Called from doLogin() (company code) and loadPL() (company name).
+     2. Selection screen defaults: company 1000, year 2026, FS version PEPL via
+        prefillDefaults(). Only fills empty fields, so a restored last selection still wins.
+     3. index.html (not this file): double-encoded chars (â€") replaced with HTML entities,
+        broken script src (js/dashboard<newline>.js) fixed, ids login-brand / hdr-brand added. */
+
+  /* DASH v7 CHANGE LOG (31 Oct 2026):
+     1. First two tiles merged into ONE tile "Revenue, Production & Purchase" (3 period cards:
+        Upto Prev. Date / For Date / As on Date). Rows per card: Revenue, Production, Purchase (order changed in v8).
+        The old "Production vs Revenue" tile is gone, including its Revenue and Stock rows.
+        pvsBlock() is now pvpBlock(sale, purch, prod, qty). Revenue / Purchase use the existing
+        total_sales_* / total_purchase_* fields, Production uses production_prev/_today/_total.
+     2. Production order qty is shown ONLY in the "For Date" card, as "qty / value".
+        New CDS field needed: production_qty_today. Until it exists in zmm_cds_pl_summary the
+        qty shows 0. The other two cards and the Revenue / Purchase rows show no qty.
+     3. Sundry Creditors + Sundry Debtors tiles merged into one ageing table tile
+        "Sundry Creditors & Debtors": rows Creditors / Debtors, columns Total, 0 to 60 days,
+        >60 to <120, >120. 0 to 60 = Total - (>60 to <120) - (>120), signed, so no new CDS fields.
+     4. Currency switch (Absolute / Lakhs / Crores) for the ageing table and the Ageing Mix
+        totals only. State in UNIT, remembered in localStorage (pl_dash_unit_v2). One delegated
+        click handler, so the switch also works inside the tile popup. Everything else on the
+        dashboard stays in absolute rupees.
+     5. Ageing Mix tile kept (now follows the switch). Its body sits in a [data-host] div so
+        refreshAgeing() can redraw it without rebuilding the whole dashboard.
+     6. Red headings are CSS only (dashboard.css). */
+
+  /* DASH v13 CHANGE LOG (1 Nov 2026, later still):
+     1. Currency format control is now three buttons in the header (Absolute / Lakhs / Crores)
+        instead of a dropdown. The active one is highlighted (class is-active). setUnit() and the
+        page-load sync call syncUnitButtons() (was syncUnitSelect()). Behaviour is unchanged:
+        applies to all rupee amounts, default Absolute, choice remembered (pl_dash_unit_v3). */
+
+  /* DASH v12 CHANGE LOG (1 Nov 2026, later):
+     1. Header now shows only: currency dropdown, Date, FY, Change, Refresh (in that order).
+        The company badge (#hdr-bukrs) and the version badge (#hdr-versn) were removed from index.html,
+        so the lines that wrote into them in doLogin() and loadPL() were removed too (writing into a
+        missing element would throw). The company name still shows as the brand title (#hdr-brand). */
+
+  /* DASH v11 CHANGE LOG (1 Nov 2026):
+     1. Currency format is now ONE dropdown in the header (after the Refresh button):
+        Absolute / Lakhs / Crores. Default is Absolute. It applies to ALL rupee amounts on the
+        dashboard (revenue, purchase, production value, production order value, stock, rejection,
+        payables / receivables, ageing chart). Quantities (production qty, order qty) and COGM %
+        are never scaled.
+     2. The in-tile switch of the Payables & Receivables tile was removed (switch markup, delegated
+        click handler, refreshAgeing()). The ageing hosts [data-host] stay, they are only layout wrappers.
+     3. Scaling lives in scaleStr(); fmtAmt / fmtSale / fmtPurch / fmtUnit all call it, so every
+        rupee value follows UNIT. setUnit() saves the choice, then re-renders the dashboard from lastRow
+        (no new SAP call). Storage key bumped to pl_dash_unit_v3 so the old default (Crores, v2) is
+        dropped and Absolute is the default again.
+     4. The dropdown cannot be changed while a tile popup is open (the popup backdrop covers the header),
+        so the popup never shows stale units. */
+
+  /* DASH v10 CHANGE LOG (31 Oct 2026, night):
+     1. Stock Value card: the two rows (Finished Goods, Raw Materials) are now .stk-row elements
+        with a thin line between them, same look as the rows in Revenue, Production & Purchase.
+        The inline flex styles were replaced by the .stk-row class (dashboard.css).
+        Labels follow the user's wording: "Finished Goods" / "Raw Materials".
+     2. "Till Given Date" heading removed from the page: index.html only (the dashboard grid-A stays). */
+
+  /* DASH v9 CHANGE LOG (31 Oct 2026, evening):
+     1. Production Order tile gets the extra class "tile--fill" (4th argument of outerTile), so the
+        left column stretches to the height of the right column. Styling is in dashboard.css.
+     2. Black header, bigger line space in the first tile, footer removal: CSS / index.html only. */
+
+  /* DASH v8 CHANGE LOG (31 Oct 2026, later):
+     1. Row order in the Revenue, Production & Purchase tile: Revenue, Production, Purchase
+        (pvpBlock() reordered, nothing else changed in it).
+     2. Labels: Creditors -> Payable(s), Debtors -> Receivable(s). Tile title is now
+        "Payables & Receivables", table rows are Payable / Receivable. CDS field names are unchanged.
+     3. Ageing Mix: Payable bar first, Receivable bar second (was Debtors, Creditors).
+     4. Currency switch default is now Crores. Storage key bumped to pl_dash_unit_v2 so an old
+        saved choice (v1) does not override the new default. After that the user's choice is remembered.
+     5. Footer text (SAP S/4HANA · host name) lives in index.html, not in this file.
+     6. Taller header, bigger fonts, white background and red text are CSS only (dashboard.css).
+     7. Bigger fonts and more line spacing for the Revenue, Production & Purchase tile are CSS only. */
+
   var B = "", Y = "", V = "", D = "";
+
+  /* ── Currency unit for ALL rupee amounts (header dropdown): "A" absolute, "L" lakhs, "C" crores ── */
+  var UNIT_KEY = "pl_dash_unit_v3";
+  var UNIT = "A";   /* default Absolute */
+  var lastRow = null;   /* last CDS row, used to redraw the dashboard when the dropdown changes */
+
+  (function loadUnit() {
+    try {
+      var u = localStorage.getItem(UNIT_KEY);
+      if (u === "A" || u === "L" || u === "C") UNIT = u;
+    } catch (e) {}
+  })();
+
+  function saveUnit() {
+    try { localStorage.setItem(UNIT_KEY, UNIT); } catch (e) {}
+  }
+
+  /* Header dropdown handler: save the unit and redraw from the last data (no new SAP call) */
+  function setUnit(u) {
+    if (u !== "A" && u !== "L" && u !== "C") return;
+    UNIT = u;
+    saveUnit();
+    syncUnitButtons();
+    if (lastRow) renderDashboard(lastRow);
+  }
+
+  /* Highlight the button of the active unit */
+  function syncUnitButtons() {
+    document.querySelectorAll("#cur-unit button").forEach(function (b) {
+      b.classList.toggle("is-active", b.getAttribute("data-unit") === UNIT);
+    });
+  }
 
   /* ── Last used selection (survives reload) ── */
   var LS_KEY = "pl_dash_sel_v1";
@@ -109,6 +219,16 @@
       document.getElementById("inp-date").value  = s.d;
       return true;
     } catch (e) { return false; }
+  }
+
+  /* Brand label = company name (falls back to company code, then "Dashboard") */
+  function setBrand(name) {
+    var txt = name || "Dashboard";
+    ["login-brand", "hdr-brand"].forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e) e.textContent = txt;
+    });
+    document.title = txt + " \u2013 P&L Dashboard";
   }
 
   /* "October 2026" for the month of iso, offset months away (-1 = previous month) */
@@ -141,24 +261,33 @@
 
   function isoToOdata(e) { return "datetime'" + e + "T00:00:00'"; }
 
+  /* Scale an absolute rupee number to the selected unit: absolute (no decimals),
+     lakhs (2 decimals + " L") or crores (2 decimals + " Cr"). Quantities never go through this. */
+  function scaleStr(absVal) {
+    var d = absVal, digits = 0, suffix = "";
+    if (UNIT === "L") { d = absVal / 100000;   digits = 2; suffix = " L";  }
+    if (UNIT === "C") { d = absVal / 10000000; digits = 2; suffix = " Cr"; }
+    return d.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits }) + suffix;
+  }
+
   function fmtAmt(val) {
     var n = parseFloat(val);
     if (isNaN(n) || n === 0) return { raw: "0", cls: "zero-val" };
-    var abs = Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    var abs = scaleStr(Math.abs(n));
     return { raw: (n < 0 ? "- " : "") + abs, cls: n < 0 ? "neg" : "pos" };
   }
 
   function fmtSale(val) {
     var n = parseFloat(val);
     if (isNaN(n) || n === 0) return { raw: "\u20b9\u00a00", cls: "zero-val" };
-    var abs = Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    var abs = scaleStr(Math.abs(n));
     return { raw: (n < 0 ? "- \u20b9\u00a0" : "\u20b9\u00a0") + abs, cls: "income" };
   }
 
   function fmtPurch(val) {
     var n = parseFloat(val);
     if (isNaN(n) || n === 0) return { raw: "\u20b9\u00a00", cls: "zero-val" };
-    var abs = Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    var abs = scaleStr(Math.abs(n));
     return { raw: (n < 0 ? "- \u20b9\u00a0" : "\u20b9\u00a0") + abs, cls: "expense" };
   }
 
@@ -181,6 +310,14 @@
       : "\u20b9\u00a0" + f.raw;
   }
   function fmtRsVal(v) { return fmtRs(fmtAmt(v)); }
+
+  /* Amount in the selected unit with rupee sign (ageing table / chart, rounded to 2 decimals first).
+     Same colour classes as fmtAmt (negative = neg, positive = pos, zero = zero-val). */
+  function fmtUnit(val) {
+    var n = Math.round((parseFloat(val) || 0) * 100) / 100;
+    if (n === 0) return { raw: "\u20b9\u00a00", cls: "zero-val" };
+    return { raw: (n < 0 ? "- " : "") + "\u20b9\u00a0" + scaleStr(Math.abs(n)), cls: n < 0 ? "neg" : "pos" };
+  }
 
   /* ── SVG icons ── */
   var IC = {
@@ -242,26 +379,22 @@
       + '</div>';
   }
 
-  function saleBlock(saleF, purchF) {
-    return '<div class="sub-val-block">'
-      + '<div class="sub-val-label">Revenue</div>'
-      + '<div class="sub-val-amount ' + saleF.cls + '">' + saleF.raw + '</div>'
-      + '</div>'
-      + '<div class="sub-val-block" style="margin-top:4px">'
-      + '<div class="sub-val-label">Purchase</div>'
-      + '<div class="sub-val-amount ' + purchF.cls + '">' + purchF.raw + '</div>'
-      + '</div>';
-  }
-
-  function pvsBlock(prod, sale, stk) {
+  /* Merged tile rows: Revenue, Production, Purchase.
+     prodQty is passed only for the "For Date" card -> production shows "qty / value".
+     Other cards: prodQty undefined -> value only. */
+  function pvpBlock(saleF, purchF, prodVal, prodQty) {
+    var prodTxt = (prodQty === undefined) ? prodVal : (prodQty + ' / ' + prodVal);
     return '<div class="pvs-row">'
-      + '<span class="pvs-label">Production</span><span class="pvs-val">' + prod + '</span>'
+      + '<span class="pvs-label">Revenue</span>'
+      + '<span class="pvs-val ' + saleF.cls + '">' + saleF.raw + '</span>'
       + '</div>'
       + '<div class="pvs-row">'
-      + '<span class="pvs-label">Revenue</span><span class="pvs-val">' + sale + '</span>'
+      + '<span class="pvs-label">Production</span>'
+      + '<span class="pvs-val">' + prodTxt + '</span>'
       + '</div>'
       + '<div class="pvs-row">'
-      + '<span class="pvs-label">Stock</span><span class="pvs-val">' + stk + '</span>'
+      + '<span class="pvs-label">Purchase</span>'
+      + '<span class="pvs-val ' + purchF.cls + '">' + purchF.raw + '</span>'
       + '</div>';
   }
 
@@ -294,7 +427,7 @@
     var w = max > 0 ? (p.sum / max * 100) : 0;
     function seg(v, cls) {
       return (p.sum > 0 && v > 0)
-        ? '<span class="ag-seg ' + cls + '" style="width:' + (v / p.sum * 100) + '%" title="' + fmtRs(fmtAmt(v)) + '"></span>'
+        ? '<span class="ag-seg ' + cls + '" style="width:' + (v / p.sum * 100) + '%" title="' + fmtUnit(v).raw + '"></span>'
         : '';
     }
     return '<div class="ag-row">'
@@ -302,7 +435,46 @@
       + '<div class="ag-track"><div class="ag-bar" style="width:' + (p.sum > 0 ? Math.max(w, 2) : 0) + '%">'
       + seg(p.a, "ag-a") + seg(p.b, "ag-b") + seg(p.c, "ag-c")
       + '</div></div>'
-      + '<span class="ag-tot">' + fmtRs(fmtAmt(p.t)) + '</span>'
+      + '<span class="ag-tot">' + fmtUnit(p.t).raw + '</span>'
+      + '</div>';
+  }
+
+  /* ── Ageing table (Creditors / Debtors) ── */
+
+  function ageTableRow(label, tot, g60, g120) {
+    var t = parseFloat(tot)  || 0;
+    var b = parseFloat(g60)  || 0;
+    var c = parseFloat(g120) || 0;
+    var a = t - b - c;   /* 0 to 60 days, signed so creditors (negative) stay consistent */
+    function cell(v) { var f = fmtUnit(v); return '<td class="' + f.cls + '">' + f.raw + '</td>'; }
+    return '<tr><td class="age-lbl">' + label + '</td>'
+      + cell(t) + cell(a) + cell(b) + cell(c)
+      + '</tr>';
+  }
+
+  function ageTableInner(r) {
+    r = r || {};
+    return '<table class="age-table">'
+      + '<thead><tr><th></th><th>Total</th><th>0 to 60 days</th><th>&gt;60 to &lt;120</th><th>&gt;120</th></tr></thead>'
+      + '<tbody>'
+      + ageTableRow("Payable",    r.SUNDRY_CRED_TOT, r.SUNDRY_CRED_60, r.SUNDRY_CRED_120)
+      + ageTableRow("Receivable", r.SUNDRY_DEBT_TOT, r.SUNDRY_DEBT_60, r.SUNDRY_DEBT_120)
+      + '</tbody></table>';
+  }
+
+  function ageChartInner(r) {
+    r = r || {};
+    var agD = ageParts(r.SUNDRY_DEBT_TOT, r.SUNDRY_DEBT_60, r.SUNDRY_DEBT_120);
+    var agC = ageParts(r.SUNDRY_CRED_TOT, r.SUNDRY_CRED_60, r.SUNDRY_CRED_120);
+    var agMax = Math.max(agD.sum, agC.sum);
+    return '<div class="ag-legend">'
+      + '<span><i class="ag-dot ag-a"></i>Up to 60 days</span>'
+      + '<span><i class="ag-dot ag-b"></i>60 - 120 days</span>'
+      + '<span><i class="ag-dot ag-c"></i>&gt; 120 days</span>'
+      + '</div>'
+      + '<div class="ag-chart">'
+      + ageingRow("Payable", agC, agMax)
+      + ageingRow("Receivable", agD, agMax)
       + '</div>';
   }
 
@@ -412,6 +584,7 @@
     if (!el) return;
 
     var rA = r || {};
+    lastRow = rA;
 
     var salePrev  = fmtSale(rA.total_sales_tillyest),  purchPrev  = fmtPurch(rA.total_purchase_tillyest);
     var saleToday = fmtSale(rA.total_sales_today),     purchToday = fmtPurch(rA.total_purchase_today);
@@ -420,15 +593,6 @@
     var stkFG = fmtAmt(rA.stock_value_FG);
     var stkRM = fmtAmt(rA.stock_value_RM);
     var rejS = fmtAmt(rA.Rejection_value);
-
-    /* Creditors = vendor ageing, Debtors = customer ageing (swap fixed in the CDS) */
-    var credT   = fmtAmt(rA.SUNDRY_CRED_TOT);
-    var cred120 = fmtAmt(rA.SUNDRY_CRED_120);
-    var cred60  = fmtAmt(rA.SUNDRY_CRED_60);
-
-    var debtT   = fmtAmt(rA.SUNDRY_DEBT_TOT);
-    var debt120 = fmtAmt(rA.SUNDRY_DEBT_120);
-    var debt60  = fmtAmt(rA.SUNDRY_DEBT_60);
 
     /* Production orders: FG only (mtart 50-59).
        Current month: open qty, open value, orders > 7 days. Till previous month: open + WIP (qty / value). */
@@ -440,9 +604,9 @@
     var curMonth  = monthLabel(D, 0);
     var prevMonth = monthLabel(D, -1);
 
+    /* Production value per period + production qty for "For Date" only (new CDS field production_qty_today) */
     var pPrev  = fmtRsVal(rA.production_prev),  pToday  = fmtRsVal(rA.production_today), pAson  = fmtRsVal(rA.production_total);
-    var sPrev  = fmtRsVal(rA.sales_prev),       sToday  = fmtRsVal(rA.sales_today),      sAson  = fmtRsVal(rA.sales_total);
-    var skPrev = fmtRsVal(rA.Stock_prev),       skToday = fmtRsVal(rA.Stock_today),      skAson = fmtRsVal(rA.Stock_total);
+    var pTodayQty = fmtNum(rA.production_qty_today);
 
     /* Selected date shown next to every "For Date" label */
     var forDateLabel = "For Date (" + isoToDisplay(D) + ")";
@@ -450,19 +614,12 @@
     var asonLabel = "As on Date (" + isoToDisplay(D) + ")";
     var left = "";
 
-    left += outerTile(IC.chart, "Revenue &amp; Purchase",
+    /* Merged tile: Revenue, Production & Purchase (rows: Revenue, Production, Purchase) */
+    left += outerTile(IC.chart, "Revenue, Production &amp; Purchase",
       '<div class="sub-row cols-3">'
-      + periodCard(prevLabel,    saleBlock(salePrev, purchPrev))
-      + periodCard(forDateLabel, saleBlock(saleToday, purchToday))
-      + periodCard(asonLabel,    saleBlock(saleAson, purchAson))
-      + '</div>'
-    );
-
-    left += outerTile(IC.factory, "Production vs Revenue",
-      '<div class="sub-row cols-3">'
-      + periodCard(prevLabel,    pvsBlock(pPrev, sPrev, skPrev))
-      + periodCard(forDateLabel, pvsBlock(pToday, sToday, skToday))
-      + periodCard(asonLabel,    pvsBlock(pAson, sAson, skAson))
+      + periodCard(prevLabel,    pvpBlock(salePrev,  purchPrev,  pPrev))
+      + periodCard(forDateLabel, pvpBlock(saleToday, purchToday, pToday, pTodayQty))
+      + periodCard(asonLabel,    pvpBlock(saleAson,  purchAson,  pAson))
       + '</div>'
     );
 
@@ -477,7 +634,8 @@
       + '<div class="prod-order-row">'
       + poCard("Open Orders Qty / Value", openP, openPV)
       + poCard("WIP Orders Qty / Value", wipP, wipPV)
-      + '</div>'
+      + '</div>',
+      "tile--fill"
     );
 
     var right = "";
@@ -487,12 +645,12 @@
       + '<div class="sub-card" role="button" tabindex="0">'
       + '<div class="sub-card-hdr"><span class="sub-card-hdr-icon">' + IC.box + '</span>'
       + '<span class="sub-card-hdr-title">Stock Value</span></div>'
-      + '<div class="sub-val-block" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">'
-      + '<div class="sub-val-label">FG</div>'
+      + '<div class="stk-row">'
+      + '<div class="sub-val-label">Finished Goods</div>'
       + '<div class="sub-val-amount ' + stkFG.cls + '">' + fmtRs(stkFG) + '</div>'
       + '</div>'
-      + '<div class="sub-val-block" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">'
-      + '<div class="sub-val-label">RM</div>'
+      + '<div class="stk-row">'
+      + '<div class="sub-val-label">Raw Materials</div>'
       + '<div class="sub-val-amount ' + stkRM.cls + '">' + fmtRs(stkRM) + '</div>'
       + '</div>'
       + '</div>'
@@ -508,49 +666,16 @@
       + '</div>'
     );
 
-    right += outerTile(IC.people, "Sundry Creditors",
-      '<div class="sub-row cols-3">'
-      + periodCard("Total",
-          '<div class="sub-val-label">Creditors</div>'
-          + '<div class="sub-val-amount ' + credT.cls + '">' + fmtRs(credT) + '</div>')
-      + periodCard("&gt; 60 to &lt; 120 Days",
-          '<div class="sub-val-label">Creditors</div>'
-          + '<div class="sub-val-amount ' + cred60.cls + '">' + fmtRs(cred60) + '</div>')
-      + periodCard("&gt; 120 Days",
-          '<div class="sub-val-label">Creditors</div>'
-          + '<div class="sub-val-amount ' + cred120.cls + '">' + fmtRs(cred120) + '</div>')
-      + '</div>'
-    );
-
-    right += outerTile(IC.people, "Sundry Debtors",
-      '<div class="sub-row cols-3">'
-      + periodCard("Total",
-          '<div class="sub-val-label">Debtors</div>'
-          + '<div class="sub-val-amount ' + debtT.cls + '">' + fmtRs(debtT) + '</div>')
-      + periodCard("&gt; 60 to &lt; 120 Days",
-          '<div class="sub-val-label">Debtors</div>'
-          + '<div class="sub-val-amount ' + debt60.cls + '">' + fmtRs(debt60) + '</div>')
-      + periodCard("&gt; 120 Days",
-          '<div class="sub-val-label">Debtors</div>'
-          + '<div class="sub-val-amount ' + debt120.cls + '">' + fmtRs(debt120) + '</div>')
-      + '</div>'
+    /* Payables (creditors) + Receivables (debtors) as ONE ageing table with the currency switch.
+       Creditors = vendor ageing, Debtors = customer ageing (from the CDS). */
+    right += outerTile(IC.people, "Payables &amp; Receivables",
+      '<div class="age-wrap" data-host="table">' + ageTableInner(rA) + '</div>'
     );
 
     /* Ageing mix chart: fills the space under the right column (tile--grow stretches it
        to the height of the left column). Shared scale so debtors vs creditors size compares. */
-    var agD = ageParts(rA.SUNDRY_DEBT_TOT, rA.SUNDRY_DEBT_60, rA.SUNDRY_DEBT_120);
-    var agC = ageParts(rA.SUNDRY_CRED_TOT, rA.SUNDRY_CRED_60, rA.SUNDRY_CRED_120);
-    var agMax = Math.max(agD.sum, agC.sum);
     right += outerTile(IC.chart, "Ageing Mix",
-      '<div class="ag-legend">'
-      + '<span><i class="ag-dot ag-a"></i>Up to 60 days</span>'
-      + '<span><i class="ag-dot ag-b"></i>60 - 120 days</span>'
-      + '<span><i class="ag-dot ag-c"></i>&gt; 120 days</span>'
-      + '</div>'
-      + '<div class="ag-chart">'
-      + ageingRow("Debtors", agD, agMax)
-      + ageingRow("Creditors", agC, agMax)
-      + '</div>',
+      '<div data-host="chart">' + ageChartInner(rA) + '</div>',
       "tile--grow"
     );
 
@@ -579,7 +704,7 @@
     });
   }
 
-  /* ── Login — UNCHANGED ── */
+  /* ── Login ── */
   function doLogin() {
     var bukrs = document.getElementById("inp-bukrs").value.trim().toUpperCase();
     var year  = document.getElementById("inp-year").value.trim();
@@ -594,10 +719,9 @@
 
     B = bukrs; Y = year; V = versn; D = date || todayISO();
     saveSel();
+    setBrand(B); /* company code until loadPL() brings the company name */
 
-    document.getElementById("hdr-bukrs").textContent = "Co: "  + B;
     document.getElementById("hdr-year").textContent  = "FY: "  + Y;
-    document.getElementById("hdr-versn").textContent = "Ver: " + V;
     document.getElementById("hdr-date").textContent  = isoToDisplay(D);
     document.getElementById("login-screen").style.display = "none";
     hideSections();
@@ -614,7 +738,7 @@
   }
 
   /* ── Fetch ──
-     CDS returns a single row, pass rows[0]. Company name (company_name) goes to the header. */
+     CDS returns a single row, pass rows[0]. Company name (company_name) goes to the header + brand label. */
   async function loadPL() {
     var errEl = document.getElementById("err-bar");
     errEl.style.display = "none";
@@ -649,7 +773,7 @@
 
         renderDashboard(rows[0]);
         if (rows[0] && rows[0].company_name) {
-          document.getElementById("hdr-bukrs").textContent = B + " - " + rows[0].company_name;
+          setBrand(rows[0].company_name);
         }
         return;
 
@@ -673,9 +797,19 @@
     var inp = document.getElementById("inp-date");
     if (inp && !inp.value) inp.value = todayISO();
   }
-  /* Restore last used selection first (then auto login), else just prefill today's date */
+  /* Selection screen defaults (only fills empty fields) */
+  function prefillDefaults() {
+    var d = { "inp-bukrs": "1000", "inp-year": "2026", "inp-versn": "PEPL" };
+    Object.keys(d).forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e && !e.value) e.value = d[id];
+    });
+  }
+  /* Restore last used selection first (then auto login), else prefill defaults + today's date */
   function initScreen() {
+    syncUnitButtons();
     var restored = restoreSel();
+    prefillDefaults();
     prefillDate();
     if (restored) doLogin();
   }
@@ -690,5 +824,6 @@
   window.doLogin      = doLogin;
   window.changeParams = changeParams;
   window.loadPL       = loadPL;
+  window.setUnit      = setUnit;
 })();
 //# sourceMappingURL=dashboard.js.map

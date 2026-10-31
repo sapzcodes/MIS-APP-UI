@@ -8,6 +8,68 @@
      ESC listener guarded with _escBound flag — registered only once.
    - All other rules unchanged from previous session. */
 
+/* DASH v14 CHANGE LOG (1 Nov 2026, mobile fit):
+   Reason: the dashboard must fit a phone screen perfectly. Desktop looks unchanged.
+   CSS only, no JS / HTML change. Only the "Responsive" block at the bottom was replaced.
+   1. Grids use minmax(0,1fr) so wide content (long values) can no longer push the page wider
+      than the screen. html/body overflow-x hidden as a safety net.
+   2. Touch devices (@media hover:none): hover zoom, shadow and font bumps are switched off.
+      They caused jumpy layout when tapping a card on a phone.
+   3. Phone header: not sticky, compact, the Absolute / Lakhs / Crores switch and the buttons
+      get their own full-width row.
+   4. Production Order cards become a label-left / value-right row on phones.
+   5. Payables & Receivables table scrolls sideways inside its tile (min-width 440px).
+   6. Ageing Mix: label + total on one line, bar below it.
+   7. Login inputs 16px on phones so iOS does not auto-zoom on focus.
+   8. Popup fonts reduced a bit on phones. */
+
+/* DASH v13 CHANGE LOG (1 Nov 2026, later still):
+   1. .shell-select (dropdown) replaced by .shell-seg: three joined buttons in the header,
+      light on black, the active one (.is-active) has a solid white background with black text. */
+
+/* DASH v11 CHANGE LOG (1 Nov 2026):
+   1. New .shell-select: the currency dropdown in the header (after Refresh). Same look as the
+      header buttons (light on black); options get a black background so they stay readable.
+   2. The old in-tile .cur-sw switch rules were removed (switch no longer exists). */
+
+/* DASH v10 CHANGE LOG (31 Oct 2026, night):
+   1. New .stk-row (Finished Goods / Raw Materials inside the Stock Value card): label left, value
+      right, 1px line between the rows like .pvs-row. Padding 6px 0 replaces the old inline margin-top.
+      .stk-row .sub-val-label has margin-bottom 0 so the row is vertically centred. */
+
+/* DASH v9 CHANGE LOG (31 Oct 2026, evening):
+   1. Header background is now black. Title / sub text red (brighter red #ff4d4d, the dashboard red
+      #bb0000 is too dark on black). Badges and buttons are back to light-on-dark (white text,
+      translucent white background), as before v8.
+   2. Revenue, Production & Purchase: .pvs-row padding 7 -> 10px (more line space).
+   3. Left column now matches the height of the right column: .tile--fill on the Production Order
+      tile. The tile and its two card rows stretch into the free space, card text stays centred.
+      Only the dashboard copy stretches, the popup copy keeps its natural size.
+   4. Footer removed from index.html (the footer {} rule below is now unused, harmless). */
+
+/* DASH v8 CHANGE LOG (31 Oct 2026, later):
+   1. Header: white background, red text, taller (min-height 46 -> 64), title font 15 -> 22px,
+      sub text 13 -> 16px. Badges and buttons switched from white-on-dark to dark-on-light so they
+      stay readable on the white header. Light shadow + bottom border instead of the dark shadow.
+   2. Revenue, Production & Purchase tile: .pvs-label 11 -> 13px, .pvs-val 13 -> 15px, row padding
+      3 -> 7px (more line space). Hover sizes 12/15 -> 14/17, popup sizes 12/15 -> 14/17.
+   3. .ag-row label column 64 -> 86px because "Receivable" is longer than "Creditors". */
+
+/* DASH v7 CHANGE LOG (31 Oct 2026):
+   1. Red headings: .section-label, .tile-hdr-title and .tile-popup-hdr-title now use #bb0000.
+      Sub-card titles and the Production Order month sub-headings are NOT changed.
+   2. New ageing table (Creditors / Debtors in one table): .age-wrap, .age-table, .age-th, .age-lbl, .age-num.
+   3. New currency switch (Absolute / Lakhs / Crores): .cur-sw. Used only in the ageing table tile.
+   4. .tile--grow: the inner [data-host] wrapper of the Ageing Mix tile also stretches, so the
+      bars still fill the free space after the chart was moved into a host div (needed for the switch refresh).
+   5. Merged Revenue / Production / Purchase tile uses the existing .pvs-row rules, no new CSS needed. */
+
+/* COLOUR + HEIGHT CHANGE LOG (27 Oct 2026, late):
+   1. Ageing Mix colours: up to 60 days grey-blue -> light green (.ag-a),
+      60 - 120 days orange -> yellow (.ag-b), > 120 days stays red (.ag-c).
+   2. .prod-order-row padding 6/8 -> 8/10, so the Production Order tile is about 3% taller
+      (2 rows x 4px). The Ageing Mix tile on the right absorbs the difference. */
+
 /* RIGHT COLUMN FILL CHANGE LOG (27 Oct 2026, evening):
    1. .dash-two-col align-items start -> stretch: both columns get the same height.
    2. .tile--grow: last tile of the right column (Ageing Mix) grows into the free space.
@@ -68,22 +130,22 @@ body {
 
 /* ── Shell Header ── */
 header {
-  background: #1b3a52; min-height: 46px; padding: 0 20px;
+  background: #000; min-height: 64px; padding: 0 20px;
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 5px;
   position: sticky; top: 0; z-index: 10;
   box-shadow: 0 2px 6px rgba(0,0,0,0.28);
 }
 .shell-title {
-  font-size: 15px; font-weight: 700; color: #fff;
-  white-space: nowrap; padding: 10px 0;
+  font-size: 22px; font-weight: 700; color: #ff4d4d;
+  white-space: nowrap; padding: 14px 0;
   display: flex; align-items: center; gap: 12px;
 }
-.shell-title span { opacity: 0.65; font-weight: 400; margin-left: 8px; font-size: 13px; }
-.shell-title em { color: #4caf7d; font-style: normal; }
+.shell-title span { color: #ff4d4d; opacity: 0.85; font-weight: 400; margin-left: 8px; font-size: 16px; }
+.shell-title em { color: #ff4d4d; font-style: normal; }
 .shell-right { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .shell-badge {
-  font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 4px;
+  font-size: 13px; font-weight: 600; padding: 5px 11px; border-radius: 4px;
   color: #fff; background: rgba(255,255,255,0.12);
   border: 1px solid rgba(255,255,255,0.22); white-space: nowrap;
   display: flex; align-items: center; gap: 5px;
@@ -92,18 +154,32 @@ header {
 .shell-badge svg { opacity: 0.75; }
 .shell-btn {
   border: 1px solid rgba(255,255,255,0.35); background: transparent; color: #fff;
-  padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;
+  padding: 5px 13px; border-radius: 4px; font-size: 13px; font-weight: 600;
   cursor: pointer; font-family: inherit; transition: background 0.15s;
 }
 .shell-btn:hover { background: rgba(255,255,255,0.12); }
 .shell-btn.primary { background: rgba(255,255,255,0.16); }
 .shell-btn.primary:hover { background: rgba(255,255,255,0.26); }
 
+.shell-seg {
+  display: inline-flex;
+  border: 1px solid rgba(255,255,255,0.35); border-radius: 4px; overflow: hidden;
+}
+.shell-seg button {
+  border: none; border-right: 1px solid rgba(255,255,255,0.35);
+  background: transparent; color: #fff;
+  padding: 5px 13px; font-size: 13px; font-weight: 600;
+  font-family: inherit; cursor: pointer; transition: background 0.15s, color 0.15s;
+}
+.shell-seg button:last-child { border-right: none; }
+.shell-seg button:hover { background: rgba(255,255,255,0.14); }
+.shell-seg button.is-active { background: #fff; color: #000; }
+
 /* ── Main ── */
 main { padding: 10px 20px 14px; }
 
 .section-label {
-  font-size: 16px; font-weight: 600; color: #1b3a52;
+  font-size: 16px; font-weight: 600; color: #bb0000;   /* red heading */
   margin-bottom: 8px; padding-left: 2px;
 }
 
@@ -165,7 +241,7 @@ main { padding: 10px 20px 14px; }
 .tile-hdr:hover { background: #f5f8fb; }
 .tile-hdr-left { display: flex; align-items: center; gap: 9px; }
 .tile-hdr-icon { width: 22px; height: 22px; flex-shrink: 0; color: #1b3a52; }
-.tile-hdr-title { font-size: 15px; font-weight: 700; color: #1b3a52; }
+.tile-hdr-title { font-size: 15px; font-weight: 700; color: #bb0000; }   /* red heading */
 .tile-hdr small { display: none; }
 .tile-hdr-chevron { color: #9da0a4; font-size: 18px; line-height: 1; }
 
@@ -221,8 +297,8 @@ main { padding: 10px 20px 14px; }
 .sub-card:hover .sub-val-amount      { font-size: 19px; }
 .sub-card:hover .sub-val-label       { font-size: 12px; }
 .sub-card:hover .sub-card-hdr-title  { font-size: 13px; }
-.sub-card:hover .pvs-label           { font-size: 12px; }
-.sub-card:hover .pvs-val             { font-size: 15px; }
+.sub-card:hover .pvs-label           { font-size: 14px; }
+.sub-card:hover .pvs-val             { font-size: 17px; }
 .sub-card:hover .cost-pct-compact-val { font-size: 20px; }
 .sub-card:hover .prod-order-val      { font-size: 17px; }
 
@@ -251,19 +327,28 @@ main { padding: 10px 20px 14px; }
   text-align: right;
 }
 
-/* ── Production vs Sales: row-wise ── */
+/* ── Revenue / Production / Purchase rows (merged tile) ── */
 .pvs-row {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 3px 0;
+  padding: 10px 0;
   border-bottom: 1px solid #f0f2f4;
 }
 .pvs-row:last-child { border-bottom: none; }
-.pvs-label { font-size: 11px; color: #6a7a8a; }
+.pvs-label { font-size: 13px; color: #6a7a8a; }
 .pvs-val {
-  font-size: 13px; font-weight: 600; color: #1b3a52;
+  font-size: 15px; font-weight: 600; color: #1b3a52;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
+
+/* ── Stock Value rows: Finished Goods / Raw Materials, line between them ── */
+.stk-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f2f4;
+}
+.stk-row:last-child { border-bottom: none; }
+.stk-row .sub-val-label { margin-bottom: 0; }
 
 /* ── Cost cards (compact, inside Stock & Rejection & Cost tile) ── */
 /* Reason: COGS/COGM merged into Stock & Rejection tile to save space.
@@ -281,7 +366,7 @@ main { padding: 10px 20px 14px; }
 /* ── Production Order cards ── */
 .prod-order-row {
   display: grid; grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px; padding: 6px 12px 8px;
+  gap: 10px; padding: 13px 12px 14px;   /* +2px top / bottom per row: Production Order tile about 3% taller */
 }
 .prod-order-card { text-align: center; padding: 8px 10px 10px; }
 .prod-order-label { font-size: 11px; color: #6a7a8a; margin-bottom: 4px; }
@@ -307,11 +392,42 @@ main { padding: 10px 20px 14px; }
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Ageing table (Creditors / Debtors) ── */
+.age-wrap { padding: 8px 14px 12px; }
+
+.age-table { width: 100%; border-collapse: collapse; }
+.age-table th {
+  font-size: 12px; font-weight: 600; color: #6a7a8a;
+  text-align: right; padding: 4px 8px 6px;
+  border-bottom: 1px solid #e8ecf0; white-space: nowrap;
+}
+.age-table th:first-child { text-align: left; }
+.age-table td {
+  font-size: 13px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right; padding: 8px 8px;
+  border-bottom: 1px solid #f0f2f4; white-space: nowrap;
+}
+.age-table tr:last-child td { border-bottom: none; }
+.age-table td.age-lbl { text-align: left; color: #1b3a52; font-weight: 700; }
+
 /* ── Tile that grows to fill the column (Ageing Mix) ── */
 .tile--grow { flex: 1; }
 .tile--grow .tile-body {
   flex: 1; display: flex; flex-direction: column;
   padding: 8px 14px 10px;
+}
+.tile--grow .tile-body > [data-host] {
+  flex: 1; display: flex; flex-direction: column;
+}
+
+/* ── Tile that stretches to the column height (Production Order, left column) ──
+   The two card rows share the free space; cards keep their text centred. */
+.tile--fill { flex: 1; }
+.tile--fill .tile-body { flex: 1; display: flex; flex-direction: column; }
+.tile--fill .tile-body > .prod-order-row { flex: 1; }
+.tile--fill .prod-order-card {
+  display: flex; flex-direction: column; justify-content: center;
 }
 
 /* ── Ageing Mix chart ── */
@@ -326,7 +442,7 @@ main { padding: 10px 20px 14px; }
   justify-content: space-around; gap: 6px;
 }
 .ag-row {
-  display: grid; grid-template-columns: 64px 1fr 104px;
+  display: grid; grid-template-columns: 86px 1fr 104px;
   align-items: center; gap: 8px;
 }
 .ag-lbl { font-size: 12px; font-weight: 600; color: #1b3a52; }
@@ -337,9 +453,9 @@ main { padding: 10px 20px 14px; }
   font-size: 12px; font-weight: 600; color: #1b3a52; text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.ag-a { background: #9fb7cc; }
-.ag-b { background: #e76500; }
-.ag-c { background: #bb0000; }
+.ag-a { background: #a5d6a7; }   /* up to 60 days: light green */
+.ag-b { background: #f5c518; }   /* 60 - 120 days: yellow */
+.ag-c { background: #bb0000; }   /* > 120 days: red */
 
 /* ── Colour tokens ── */
 .income   { color: #107e3e; }
@@ -406,7 +522,7 @@ main { padding: 10px 20px 14px; }
 }
 .tile-popup-hdr-left { display: flex; align-items: center; gap: 10px; }
 .tile-popup-hdr-icon { width: 22px; height: 22px; flex-shrink: 0; }
-.tile-popup-hdr-title { font-size: 16px; font-weight: 700; color: #1b3a52; }
+.tile-popup-hdr-title { font-size: 16px; font-weight: 700; color: #bb0000; }   /* red heading */
 .tile-popup-close {
   background: none; border: none; cursor: pointer;
   color: #6a7a8a; font-size: 22px; line-height: 1;
@@ -421,8 +537,8 @@ main { padding: 10px 20px 14px; }
 .tile-popup-body .sub-card         { padding: 14px 16px 16px; }
 .tile-popup-body .sub-val-amount   { font-size: 17px; }
 .tile-popup-body .sub-card-hdr-title { font-size: 13px; }
-.tile-popup-body .pvs-val          { font-size: 15px; }
-.tile-popup-body .pvs-label        { font-size: 12px; }
+.tile-popup-body .pvs-val          { font-size: 17px; }
+.tile-popup-body .pvs-label        { font-size: 14px; }
 .tile-popup-body .cost-pct-compact-val { font-size: 20px; }
 .tile-popup-body .prod-order-val   { font-size: 26px; }
 .tile-popup-body .prod-order-label { font-size: 12px; }
@@ -436,12 +552,85 @@ footer {
 }
 
 /* ── Responsive ── */
+
+/* Stop grid children from forcing the page wider than the screen */
+.dash-two-col, .dash-col, .sub-row, .prod-order-row { min-width: 0; }
+.dash-two-col { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+.sub-row.cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.sub-row.cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+html, body { overflow-x: hidden; }
+
+/* Touch devices: no hover zoom / font bumps (they cause jumpy layout on tap) */
+@media (hover: none) {
+  .sub-card:hover { transform: none; box-shadow: none; border-color: #e0e5ea; }
+  .sub-card:hover .sub-card-hdr-title { color: #1b3a52; }
+  .sub-card:hover .sub-val-amount      { font-size: 15px; }
+  .sub-card:hover .sub-val-label       { font-size: 11px; }
+  .sub-card:hover .sub-card-hdr-title  { font-size: 12px; }
+  .sub-card:hover .pvs-label           { font-size: 13px; }
+  .sub-card:hover .pvs-val             { font-size: 15px; }
+  .sub-card:hover .prod-order-val      { font-size: 15px; }
+}
+
+@media (min-width: 701px) and (max-width: 1100px) {
+  .dash-two-col { grid-template-columns: minmax(0,1fr); }
+}
+
 @media (max-width: 700px) {
-  .dash-two-col { grid-template-columns: 1fr; }
   main { padding: 8px; }
-  .sub-row.cols-3 { grid-template-columns: 1fr; }
-  .sub-row.cols-2 { grid-template-columns: 1fr; }
-  .prod-order-row { grid-template-columns: 1fr; }
-  .cost-pct-row--prominent { grid-template-columns: 1fr; }
+  .dash-two-col { grid-template-columns: minmax(0,1fr); gap: 8px; }
+  .dash-col { gap: 8px; }
+  .sub-row, .prod-order-row { padding-left: 8px; padding-right: 8px; gap: 8px; }
+  .sub-row.cols-3, .sub-row.cols-2 { grid-template-columns: minmax(0,1fr); }
+  .prod-order-row { grid-template-columns: minmax(0,1fr); padding-top: 8px; padding-bottom: 8px; }
+
+  /* Header: not sticky, compact, controls on their own full-width row */
+  header { position: static; min-height: 0; padding: 8px 12px; gap: 8px; }
+  .shell-title { font-size: 17px; padding: 4px 0; flex-wrap: wrap; gap: 4px; }
+  .shell-title span { font-size: 12px; margin-left: 0; }
+  .shell-right { width: 100%; gap: 6px; }
+  .shell-seg { width: 100%; }
+  .shell-seg button { flex: 1; padding: 7px 4px; }
+  .shell-badge { font-size: 12px; padding: 5px 8px; }
+  .shell-btn { flex: 1; padding: 7px 8px; }
+
+  /* Revenue / Production / Purchase rows: let long values wrap */
+  .pvs-row { gap: 10px; padding: 8px 0; }
+  .pvs-val { font-size: 14px; word-break: break-word; }
+
+  /* Production Order cards: label left, value right */
+  .prod-order-card, .tile--fill .prod-order-card {
+    flex-direction: row; align-items: center; justify-content: space-between;
+    text-align: left; gap: 10px; padding: 8px 10px;
+  }
+  .prod-order-label { margin-bottom: 0; font-size: 12px; }
+  .prod-order-val { font-size: 14px; text-align: right; }
+  .po-subhdr { padding-left: 8px !important; }
+
+  /* Stock rows */
+  .sub-val-amount { font-size: 14px; }
+
+  /* Payables & Receivables table: scroll sideways inside the tile */
+  .age-wrap { padding: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .age-table { min-width: 440px; }
+  .age-table th { font-size: 11px; padding: 4px 6px; }
+  .age-table td { font-size: 12px; padding: 7px 6px; }
+
+  /* Ageing Mix: label above bar, total beside it */
+  .ag-row { grid-template-columns: 1fr auto; gap: 4px 8px; }
+  .ag-lbl { grid-column: 1; }
+  .ag-tot { grid-column: 2; grid-row: 1; font-size: 12px; }
+  .ag-track { grid-column: 1 / -1; grid-row: 2; }
+  .tile--grow .tile-body { padding: 8px; }
+
+  /* Popup */
   .tile-popup { width: 96vw; max-height: 88vh; }
+  .tile-popup-body { padding: 4px 6px 12px; }
+  .tile-popup-body .prod-order-val,
+  .tile-popup-body .sub-card:hover .prod-order-val { font-size: 16px; }
+  .tile-popup-body .pvs-val { font-size: 15px; }
+
+  /* Login */
+  .login-box { width: 92vw; padding: 24px 18px 20px; }
+  .login-box input { font-size: 16px; }   /* stops iOS auto-zoom on focus */
 }
