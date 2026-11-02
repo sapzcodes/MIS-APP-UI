@@ -19,6 +19,32 @@ sap.ui.define(
         this._buildShell(oRoot);
       },
 
+      _getUserName: function () {
+        try {
+          if (window.AndroidBridge && typeof window.AndroidBridge.getUsername === "function") {
+            return window.AndroidBridge.getUsername() || "";
+          }
+        } catch (e) {}
+        return "";
+      },
+
+      _updateUserBadge: function () {
+        var sUser = this._getUserName();
+        var oBadge = this._oHome ? this._oHome.querySelector(".launcherUserName") : null;
+        if (oBadge) {
+          oBadge.textContent = sUser || "SAP User";
+        }
+      },
+
+      _onSignOut: function () {
+        if (window.AndroidBridge && typeof window.AndroidBridge.signOut === "function") {
+          window.AndroidBridge.signOut();
+        } else if (confirm("Sign out and switch user?")) {
+          localStorage.clear();
+          window.location.reload();
+        }
+      },
+
       /* Home (tile grid) + slim top bar + the dashboard container (misRoot) */
       _buildShell: function (oRoot) {
         var that = this,
@@ -27,11 +53,20 @@ sap.ui.define(
         this._oRoot = oRoot;
         oRoot.style.display = "none";
 
+        var sUser = this._getUserName();
+
         this._oBar = document.createElement("div");
         this._oBar.className = "launcherBar";
         this._oBar.style.display = "none";
         this._oBar.innerHTML =
-          '<button type="button" class="launcherBack">‹ Home</button><span class="launcherBarTitle"></span>';
+          '<div class="launcherBarLeft">' +
+          '  <button type="button" class="launcherBack">‹ Home</button>' +
+          '  <span class="launcherBarTitle"></span>' +
+          '</div>' +
+          '<div class="launcherBarRight">' +
+          '  <button type="button" class="launcherBarSignOut" title="Sign out / Switch user">Sign out</button>' +
+          '</div>';
+
         this._oBar.querySelector(".launcherBack").onclick = function () {
           if (window.history.state && window.history.state.dash) {
             window.history.back(); // popstate -> home
@@ -39,11 +74,30 @@ sap.ui.define(
             that._showHome();
           }
         };
+        var oBarSignOut = this._oBar.querySelector(".launcherBarSignOut");
+        if (oBarSignOut) {
+          oBarSignOut.onclick = function () { that._onSignOut(); };
+        }
 
         this._oHome = document.createElement("div");
         this._oHome.className = "launcher";
         this._oHome.innerHTML =
-          "<h1>Dashboards</h1><div class='launcherGrid'>" +
+          '<div class="launcherHeader">' +
+          '  <div class="launcherHeaderLeft">' +
+          '    <h1>Dashboards</h1>' +
+          '  </div>' +
+          '  <div class="launcherHeaderRight">' +
+          '    <span class="launcherUser" title="Current SAP User">' +
+          '      <span class="launcherUserIcon" aria-hidden="true">👤</span>' +
+          '      <span class="launcherUserName">' + (sUser || "SAP User") + '</span>' +
+          '    </span>' +
+          '    <button type="button" class="launcherSignOutBtn" title="Sign out / Switch user">' +
+          '      <span class="launcherSignOutIcon" aria-hidden="true">⎋</span>' +
+          '      <span>Sign out</span>' +
+          '    </button>' +
+          '  </div>' +
+          '</div>' +
+          '<div class="launcherGrid">' +
           DASHBOARDS.map(function (d) {
             return (
               "<button type='button' class='launcherTile' data-id='" +
@@ -57,7 +111,16 @@ sap.ui.define(
               "</span></button>"
             );
           }).join("") +
-          "</div>";
+          '</div>';
+
+        var oSignOutBtn = this._oHome.querySelector(".launcherSignOutBtn");
+        if (oSignOutBtn) {
+          oSignOutBtn.onclick = function (e) {
+            e.stopPropagation();
+            that._onSignOut();
+          };
+        }
+
         this._oHome.onclick = function (e) {
           var el = e.target.closest(".launcherTile");
           if (el) {
@@ -117,6 +180,7 @@ sap.ui.define(
         if (this._oRoot) {
           this._oRoot.style.display = "none";
           this._oBar.style.display = "none";
+          this._updateUserBadge();
           this._oHome.style.display = "";
         }
       },

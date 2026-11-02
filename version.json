@@ -1,5 +1,5 @@
 {
-  "version": "378000520fad",
+  "version": "270e3cf6df0d",
   "minApk": 4,
   "files": [
     {
@@ -19,13 +19,13 @@
     },
     {
       "path": "controller/App.controller.js",
-      "sha256": "ecc5babd8bfa81c507cf6060baf38eb15f615c3c1d0b78355f4fd2acb9095221",
-      "size": 4309
+      "sha256": "9adfb95a7faf22570dd120943792d0eb23ea0632f9017f1f5da27a4fde7764c9",
+      "size": 6661
     },
     {
       "path": "css/style.css",
-      "sha256": "03292c485c83b920e2b58a84e156a2fb69e255d584e4cd6e6529b197bd474a6e",
-      "size": 10116
+      "sha256": "206f4eb840fa90cbf182f653498f12757c145b852a1951dbd1dd09a86ee97cdb",
+      "size": 11852
     },
     {
       "path": "i18n/i18n.properties",

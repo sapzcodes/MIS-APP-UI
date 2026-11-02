@@ -486,9 +486,64 @@
   font-family: "Segoe UI", "72", system-ui, -apple-system, Arial, sans-serif;
   color: #1b2430;
 }
-.launcher h1 {
-  margin: 0 0 16px;
+.launcherHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.launcherHeaderLeft h1 {
+  margin: 0;
   font-size: 22px;
+  font-weight: 600;
+  color: #1b2430;
+}
+.launcherHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.launcherUser {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid #d5d9df;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #323d4b;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.launcherUserIcon {
+  font-size: 14px;
+}
+.launcherSignOutBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.06);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.launcherSignOutBtn:active {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+.launcherSignOutIcon {
+  font-size: 14px;
+  font-weight: bold;
 }
 .launcherGrid {
   display: grid;
@@ -527,11 +582,17 @@
 .launcherBar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   background: #fff;
   border-bottom: 1px solid #e6e9ee;
   padding: 8px 12px;
   font-family: "Segoe UI", "72", system-ui, -apple-system, Arial, sans-serif;
+}
+.launcherBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .launcherBack {
   background: none;
@@ -544,6 +605,34 @@
 }
 .launcherBarTitle {
   font-weight: 600;
+}
+.launcherBarRight {
+  display: flex;
+  align-items: center;
+}
+.launcherBarSignOut {
+  background: none;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.launcherBarSignOut:active {
+  background: #fee2e2;
+}
+@media (max-width: 480px) {
+  .launcherHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .launcherHeaderRight {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 /* ---- Phone fix: grid tracks must be allowed to shrink so wide tables scroll inside their card ---- */
