@@ -1,6 +1,15 @@
 /* Monthly Report - live data from OData V4 service ZSRVB_MIS_REPORT (no mock data).
    Login: none here. The Android shell adds the SAP login and sap-client to every /sap/* call.
-   Mounted by controller/App.controller.js into <div id="misRoot">. */
+   Mounted by controller/App.controller.js into <div id="misRoot">.
+
+   CHANGE LOG (2 Nov 2026):
+   1. Company codes are no longer hardcoded (COMPANIES / DEFAULT_COMPANY removed).
+      They are read at mount time from the CDS root ZC_MIS_Dashboard (CompanyCode, CompanyName)
+      via loadCompanies() / initCompanies(). Reason: the CDS is the single source of truth, so a
+      new company needs no UI change. The first returned company is selected by default.
+   2. Header restyled to match the P&L dashboard (black bar, red title, light-on-dark controls).
+      The unit dropdown became a segmented control (#unitSeg) that drives the hidden #unit select,
+      so unitInfo() and the Excel export are unchanged. Styling is in the header block of the CSS. */
 sap.ui.define([], function () {
   "use strict";
 
@@ -9,9 +18,11 @@ sap.ui.define([], function () {
    ===================================================================== */
   const CONFIG = {
     ODATA_VERSION: "v4", // 'v2' -> d.results | 'v4' -> value
-    BASE_URL: "/sap/opu/odata4/sap/zsrvb_mis_report/srvd/sap/zsd_mis_report/0001", // overwritten from manifest dataSource "mainService"
+    BASE_URL:
+      "/sap/opu/odata4/sap/zsrvb_mis_report/srvd/sap/zsd_mis_report/0001", // overwritten from manifest dataSource "mainService"
     ENTITIES: {
-      sales: "ZC_MIS_SalesMonth", // V4 entity set = exposed CDS view name (check $metadata if a call returns 404)
+      companies: "ZC_MIS_Dashboard", // root entity: CompanyCode, CompanyName (check $metadata if a call returns 404)
+      sales: "ZC_MIS_SalesMonth", // V4 entity set = exposed CDS view name
       brands: "ZC_MIS_BrandSales",
       returns: "ZC_MIS_SalesReturn",
       expenses: "ZC_MIS_PurchaseExpense",
@@ -20,6 +31,7 @@ sap.ui.define([], function () {
     },
     // period = fiscal period number (1 = Apr ... 12 = Mar); bucket = B1...B5 (0-30 ... Above 90)
     FIELDS: {
+      companies: { code: "CompanyCode", name: "CompanyName" },
       sales: {
         co: "CompanyCode",
         fy: "FiscalYear",
@@ -66,11 +78,7 @@ sap.ui.define([], function () {
     VALUE_DIVISOR: 100000, // OData sends rupees; 1 Lac = 100000
   };
 
-  const COMPANIES = [
-    { code: "1000", name: "Perfect Engineers" },
-    { code: "2000", name: "Aqua Flow" },
-  ];
-  const DEFAULT_COMPANY = "1000";
+  let COMPANIES = []; // filled at runtime from ZC_MIS_Dashboard: [{ code, name }]
   const _now = new Date(),
     _sy = _now.getMonth() >= 3 ? _now.getFullYear() : _now.getFullYear() - 1;
   const FY_LIST = [0, 1].map((k) => `${_sy - k}-${_sy - k + 1}`); // current FY, previous FY
@@ -152,10 +160,11 @@ sap.ui.define([], function () {
    ===================================================================== */
   class AuthError extends Error {}
 
-  async function odataGet(entity, filter, order) {
+  async function odataGet(entity, filter, order, top) {
     const parts = ["$format=json"];
     if (filter) parts.push("$filter=" + encodeURIComponent(filter));
     if (order) parts.push("$orderby=" + encodeURIComponent(order));
+    if (top) parts.push("$top=" + top);
     let url = `${CONFIG.BASE_URL}/${CONFIG.ENTITIES[entity]}?${parts.join("&")}`;
     const out = [];
     for (let page = 0; url && page < 50; page++) {
@@ -165,14 +174,34 @@ sap.ui.define([], function () {
         credentials: "omit",
       });
       if (res.status === 401 || res.status === 403)
-        throw new AuthError(`${entity}: not allowed (HTTP ${res.status}) - check the SAP user's authorisation`);
+        throw new AuthError(
+          `${entity}: not allowed (HTTP ${res.status}) - check the SAP user's authorisation`,
+        );
       if (!res.ok) throw new Error(`${entity}: HTTP ${res.status}`);
       const j = await res.json();
-      out.push(...(CONFIG.ODATA_VERSION === "v2" ? (j.d?.results ?? []) : (j.value ?? [])));
+      out.push(
+        ...(CONFIG.ODATA_VERSION === "v2"
+          ? (j.d?.results ?? [])
+          : (j.value ?? [])),
+      );
       const next = j["@odata.nextLink"];
-      url = next ? new URL(next, location.origin + CONFIG.BASE_URL + "/").pathname + new URL(next, location.origin + CONFIG.BASE_URL + "/").search : null;
+      url = next
+        ? new URL(next, location.origin + CONFIG.BASE_URL + "/").pathname +
+          new URL(next, location.origin + CONFIG.BASE_URL + "/").search
+        : null;
     }
     return out;
+  }
+
+  /* Company list comes from the CDS root (no hardcoded company codes) */
+  async function loadCompanies() {
+    const F = CONFIG.FIELDS.companies;
+    const rows = await odataGet("companies");
+    COMPANIES = rows
+      .map((r) => ({ code: r[F.code], name: r[F.name] || "" }))
+      .filter((c) => c.code)
+      .sort((a, b) => String(a.code).localeCompare(String(b.code)));
+    return COMPANIES;
   }
 
   async function odataData(co, fy) {
@@ -187,7 +216,7 @@ sap.ui.define([], function () {
 
     const [sR, bR, rR, eR, dR, cR] = await Promise.all([
       odataGet("sales", two(F.sales)),
-      odataGet("brands", one(F.brands)),
+      odataGet("brands", one(F.brands), null, 10),
       E.returns ? odataGet("returns", one(F.returns)) : [],
       odataGet("expenses", one(F.expenses), "SortOrder"),
       odataGet("debtors", coOnly(F.debtors)),
@@ -264,7 +293,7 @@ sap.ui.define([], function () {
 
   async function loadData(co, fy) {
     const c = COMPANIES.find((x) => x.code === co);
-    return finish(await odataData(co, fy), c.name);
+    return finish(await odataData(co, fy), c ? c.name : co);
   }
 
   let root = null; // DOM element the report lives in
@@ -360,7 +389,7 @@ sap.ui.define([], function () {
     const lbl = mLabel(fy, pi),
       lblPrev = `${MONTHS[pi]}-${String(cyr - 1).slice(2)}`;
 
-    $("crumb").textContent = `Finance › MIS › ${co} - ${d.name}`;
+    $("crumb").textContent = `${co} - ${d.name}`;
     $("title").textContent = `Monthly Report · ${FULL[pi]} ${cyr}`;
 
     $("kpis").innerHTML = `
@@ -375,13 +404,13 @@ sap.ui.define([], function () {
       ${delta(ytdC, ytdP, `${range(pi)} ${String(cyr - 1).slice(2)}`, money)}</div>`;
 
     $("debTile").innerHTML = ageTile(
-      "Sundry Debtors · Ageing",
-      [{ label: "Sundry Debtors", ...d.debtors.total }],
+      "Receivables · Ageing",
+      [{ label: "Receivables", ...d.debtors.total }],
       "debtors",
     );
-    $("creTile").innerHTML = ageTile("Sundry Creditors · Ageing", [
-      { label: "Sundry Creditors", ...d.creditors.cr },
-      { label: "Creditors Advance", ...d.creditors.adv },
+    $("creTile").innerHTML = ageTile("Payables · Ageing", [
+      { label: "Payables", ...d.creditors.cr },
+      { label: "Advances", ...d.creditors.adv },
     ]);
 
     renderChart(fy, pi, d, u);
@@ -434,7 +463,7 @@ sap.ui.define([], function () {
     $("chart").innerHTML = s + "</svg>";
   }
 
-  /* Brand-wise card: scrolls inside .vscroll (header, first column and Grand Total stay pinned) */
+  /* Brand-wise card: max 10 brands fetched from OData ($top=10); no scroll needed */
   function renderBrands(d, fy, pi, u) {
     $("brandMeta").textContent =
       `${range(pi)} ${calYear(fy, pi)} · Qty in numbers · Value in ${u.name}`;
@@ -780,6 +809,7 @@ sap.ui.define([], function () {
     const co = $("company").value,
       fy = $("fy").value,
       pi = +$("period").value;
+    if (!co) return; // companies not loaded yet (or none returned)
     showBanner("Loading…");
     const my = ++reqSeq,
       r0 = root;
@@ -819,6 +849,45 @@ sap.ui.define([], function () {
       (m, i) =>
         `<option value="${i}" ${i === def ? "selected" : ""}>${m} ${i < 9 ? y0 : y1}</option>`,
     ).join("");
+  }
+
+  /* Highlight the segmented unit button that matches the hidden #unit select */
+  function syncUnitSeg() {
+    root
+      .querySelectorAll("#unitSeg button")
+      .forEach((b) =>
+        b.classList.toggle("is-active", b.dataset.unit === $("unit").value),
+      );
+  }
+
+  /* Fill the company dropdown from the CDS, then load the first company */
+  async function initCompanies() {
+    const r0 = root;
+    $("company").innerHTML = "<option value=''>Loading…</option>";
+    showBanner("Loading…");
+    try {
+      await loadCompanies();
+      if (root !== r0) return; // view re-mounted meanwhile
+      if (!COMPANIES.length) {
+        $("company").innerHTML = "<option value=''>–</option>";
+        return showBanner(
+          "No company code returned by the service. Check the CDS data and the SAP user's authorisation.",
+        );
+      }
+      $("company").innerHTML = COMPANIES.map(
+        (c) => `<option value="${c.code}">${c.code} - ${c.name}</option>`,
+      ).join("");
+      refresh(); // first company is selected by default
+    } catch (e) {
+      if (root !== r0) return;
+      $("company").innerHTML = "<option value=''>–</option>";
+      showBanner(
+        e instanceof AuthError
+          ? e.message
+          : "Could not load company codes: " + e.message,
+      );
+      console.error(e);
+    }
   }
 
   let onClick = null,
@@ -891,36 +960,47 @@ sap.ui.define([], function () {
     $("mClose").onclick = closeModal;
     $("mExport").onclick = exportPopup;
 
-    $("company").innerHTML = COMPANIES.map(
-      (c) =>
-        `<option value="${c.code}" ${c.code === DEFAULT_COMPANY ? "selected" : ""}>${c.code} - ${c.name}</option>`,
-    ).join("");
     $("fy").innerHTML = FY_LIST.map((f) => `<option>${f}</option>`).join("");
     fillPeriods();
     $("fy").onchange = () => fillPeriods(+$("period").value);
     $("go").onclick = refresh;
-    $("unit").onchange = () =>
-      STATE && render(STATE.d, STATE.co, STATE.fy, STATE.pi); // unit change needs no refetch
-    refresh();
+
+    const onUnit = () => {
+      syncUnitSeg();
+      if (STATE) render(STATE.d, STATE.co, STATE.fy, STATE.pi); // unit change needs no refetch
+    };
+    $("unit").onchange = onUnit;
+    root.querySelectorAll("#unitSeg button").forEach((b) => {
+      b.onclick = () => {
+        $("unit").value = b.dataset.unit;
+        onUnit();
+      };
+    });
+    syncUnitSeg();
+
+    initCompanies(); // loads the company list from the CDS, then the first company's data
   }
 
   const MARKUP = `
 <header>
-  <div>
-    <div class="crumb" id="crumb">Finance › MIS</div>
+  <div class="shell-title">
     <h1 id="title">Monthly Report</h1>
+    <span id="crumb"></span>
   </div>
   <div class="filters">
     <label>Company code<select id="company"></select></label>
     <label>Fiscal year<select id="fy"></select></label>
     <label>Period<select id="period"></select></label>
-    <label>Unit
-      <select id="unit">
-        <option value="cr" selected>Value in Crores</option>
-        <option value="lacs">Value in Lacs</option>
-        <option value="abs">Absolute</option>
-      </select>
-    </label>
+    <div class="shell-seg" id="unitSeg">
+      <button data-unit="cr">Crores</button>
+      <button data-unit="lacs">Lacs</button>
+      <button data-unit="abs">Absolute</button>
+    </div>
+    <select id="unit" hidden>
+      <option value="cr" selected>Value in Crores</option>
+      <option value="lacs">Value in Lacs</option>
+      <option value="abs">Absolute</option>
+    </select>
     <button class="btn-go" id="go">Go</button>
   </div>
 </header>
@@ -947,7 +1027,7 @@ sap.ui.define([], function () {
       <div class="card click" data-act="brandMatrix" title="Click for month-wise breakup">
         <h2>Brand-wise Sales · YTD</h2>
         <div class="meta" id="brandMeta"></div>
-        <div class="vscroll"><table class="dense" id="brandTbl"></table></div>
+        <div><table class="dense" id="brandTbl"></table></div>
       </div>
       <div class="card click" data-act="expMonthly" title="Click for month-wise breakup">
         <h2>Purchase &amp; Expenses · YTD</h2>

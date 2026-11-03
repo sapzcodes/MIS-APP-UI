@@ -483,7 +483,13 @@
   min-height: 100%;
   background: #f3f4f6;
   padding: 20px;
-  font-family: "Segoe UI", "72", system-ui, -apple-system, Arial, sans-serif;
+  font-family:
+    "Segoe UI",
+    "72",
+    system-ui,
+    -apple-system,
+    Arial,
+    sans-serif;
   color: #1b2430;
 }
 .launcherHeader {
@@ -535,7 +541,9 @@
   font-weight: 500;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(220, 38, 38, 0.06);
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 .launcherSignOutBtn:active {
   background: #fee2e2;
@@ -587,7 +595,13 @@
   background: #fff;
   border-bottom: 1px solid #e6e9ee;
   padding: 8px 12px;
-  font-family: "Segoe UI", "72", system-ui, -apple-system, Arial, sans-serif;
+  font-family:
+    "Segoe UI",
+    "72",
+    system-ui,
+    -apple-system,
+    Arial,
+    sans-serif;
 }
 .launcherBarLeft {
   display: flex;
@@ -650,5 +664,137 @@
   .mis .kpis,
   .mis .cols {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* ---- Header: same look as the P&L dashboard (black bar, red title, light-on-dark controls) ---- */
+.mis header {
+  background: #000;
+  min-height: 64px;
+  padding: 0 20px;
+  border-bottom: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+}
+.mis .shell-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  flex-wrap: wrap;
+}
+.mis .shell-title h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ff4d4d;
+  white-space: nowrap;
+}
+.mis .shell-title span {
+  color: #ff4d4d;
+  opacity: 0.85;
+  font-size: 16px;
+  font-weight: 400;
+}
+.mis .filters {
+  gap: 10px;
+  align-items: flex-end;
+}
+.mis .filters label {
+  color: rgba(255, 255, 255, 0.7);
+}
+.mis header select {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+}
+.mis header select option {
+  background: #000;
+  color: #fff;
+}
+.mis #unit {
+  display: none;
+}
+.mis header .btn-go {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  padding: 0 16px;
+}
+.mis header .btn-go:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+.mis .shell-seg {
+  display: inline-flex;
+  height: 32px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+}
+.mis .shell-seg button {
+  height: 100%;
+  border: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  padding: 0 13px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mis .shell-seg button:last-child {
+  border-right: none;
+}
+.mis .shell-seg button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.mis .shell-seg button.is-active {
+  background: #fff;
+  color: #000;
+}
+
+@media (max-width: 700px) {
+  .mis header {
+    position: static;
+    min-height: 0;
+    padding: 8px 12px;
+  }
+  .mis .shell-title h1 {
+    font-size: 17px;
+  }
+  .mis .shell-title span {
+    font-size: 12px;
+  }
+  .mis .filters {
+    width: 100%;
+  }
+  .mis .filters label {
+    flex: 1 1 30%;
+  }
+  .mis .filters label:first-child {
+    flex: 1 1 100%;
+  }
+  .mis header select,
+  .mis #company {
+    min-width: 0;
+    width: 100%;
+  }
+  .mis .shell-seg {
+    width: 100%;
+  }
+  .mis .shell-seg button {
+    flex: 1;
+    padding: 0 4px;
+  }
+  .mis header .btn-go {
+    flex: 1;
   }
 }
