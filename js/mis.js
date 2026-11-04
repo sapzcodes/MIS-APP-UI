@@ -2,6 +2,16 @@
    Login: none here. The Android shell adds the SAP login and sap-client to every /sap/* call.
    Mounted by controller/App.controller.js into <div id="misRoot">.
 
+   CHANGE LOG (4 Nov 2026):
+   1. Receivables total did not tie with the P&L dashboard (zfi_dash). Reason: the CDS
+      ZI_MIS_DebtorsAgeing now returns bucket B6 (advance + PDC, umskz A / Y, 03.11.2026), but this file
+      only handled B1..B5, so B6 was dropped from the Total row (col() summed 5 indexes only).
+      Fix: bucketed() takes a bucket count (debtors = 6, creditors stay 5), col() sums 6 indexes,
+      and the ageing tables show a 6th column "Adv / PDC" when the data has 6 buckets (ageHead()).
+      Receivables total now = SUM(wrbtr_d) = dashboard SUNDRY_DEBT_TOT.
+   2. Known remaining difference: MIS ageing is as on today (TF gets $session.system_date), the dashboard
+      uses its selected date. Set the dashboard date to today for an exact tie.
+
    CHANGE LOG (2 Nov 2026):
    1. Company codes are no longer hardcoded (COMPANIES / DEFAULT_COMPANY removed).
       They are read at mount time from the CDS root ZC_MIS_Dashboard (CompanyCode, CompanyName)
@@ -29,7 +39,7 @@ sap.ui.define([], function () {
       debtors: "ZC_MIS_DebtorsAgeing",
       creditors: "ZC_MIS_CreditorsAgeing",
     },
-    // period = fiscal period number (1 = Apr ... 12 = Mar); bucket = B1...B5 (0-30 ... Above 90)
+    // period = fiscal period number (1 = Apr ... 12 = Mar); bucket = B1...B5 (0-30 ... Above 90), debtors also B6 (advance + PDC)
     FIELDS: {
       companies: { code: "CompanyCode", name: "CompanyName" },
       sales: {
@@ -111,6 +121,10 @@ sap.ui.define([], function () {
     "March",
   ];
   const BUCKETS = ["0–30", "31–45", "46–60", "61–90", "Above 90"];
+  const ADV = "Adv / PDC"; // 6th debtors bucket (B6): advances + post-dated cheques, shown as credit (negative)
+
+  /* Heading list for an ageing table: 6th column only when the data has 6 buckets */
+  const ageHead = (n) => (n > BUCKETS.length ? [...BUCKETS, ADV] : BUCKETS);
 
   const sumArr = (a, from = 0, to = a.length - 1) => {
     let s = 0,
@@ -127,7 +141,9 @@ sap.ui.define([], function () {
   function finish(d, name) {
     const sb = (b) => b.reduce((s, x) => s + (x || 0), 0);
     const col = (rows) =>
-      [0, 1, 2, 3, 4].map((i) => rows.reduce((s, r) => s + (r.b[i] || 0), 0));
+      [0, 1, 2, 3, 4, 5].map((i) =>
+        rows.reduce((s, r) => s + (r.b[i] || 0), 0),
+      ); // 6 indexes: B6 (advance + PDC) must be in the total
     const fix = (t) => {
       if (!t) return;
       t.rows.forEach((r) => {
@@ -160,11 +176,10 @@ sap.ui.define([], function () {
    ===================================================================== */
   class AuthError extends Error {}
 
-  async function odataGet(entity, filter, order, top) {
+  async function odataGet(entity, filter, order) {
     const parts = ["$format=json"];
     if (filter) parts.push("$filter=" + encodeURIComponent(filter));
     if (order) parts.push("$orderby=" + encodeURIComponent(order));
-    if (top) parts.push("$top=" + top);
     let url = `${CONFIG.BASE_URL}/${CONFIG.ENTITIES[entity]}?${parts.join("&")}`;
     const out = [];
     for (let page = 0; url && page < 50; page++) {
@@ -216,7 +231,7 @@ sap.ui.define([], function () {
 
     const [sR, bR, rR, eR, dR, cR] = await Promise.all([
       odataGet("sales", two(F.sales)),
-      odataGet("brands", one(F.brands), null, 10),
+      odataGet("brands", one(F.brands)),
       E.returns ? odataGet("returns", one(F.returns)) : [],
       odataGet("expenses", one(F.expenses), "SortOrder"),
       odataGet("debtors", coOnly(F.debtors)),
@@ -250,12 +265,12 @@ sap.ui.define([], function () {
       });
       return [...m.values()];
     };
-    const bucketed = (rows, f, keyOf) => {
-      // group by key -> 5 bucket values
+    const bucketed = (rows, f, keyOf, n = 5) => {
+      // group by key -> n bucket values (debtors 6 incl. B6 advance + PDC, creditors 5)
       const m = new Map();
       rows.forEach((r) => {
         const k = keyOf(r);
-        if (!m.has(k)) m.set(k, { n: k, b: nulls(5) });
+        if (!m.has(k)) m.set(k, { n: k, b: nulls(n) });
         const i = +String(r[f.bucket]).replace(/\D/g, "") - 1;
         m.get(k).b[i] = (m.get(k).b[i] || 0) + +r[f.value] / D;
       });
@@ -286,7 +301,9 @@ sap.ui.define([], function () {
       returns: ret,
       purchase: { rows: exp },
       expNote: null,
-      debtors: { rows: bucketed(dR, F.debtors, (r) => r[F.debtors.party]) },
+      debtors: {
+        rows: bucketed(dR, F.debtors, (r) => r[F.debtors.party], 6),
+      },
       creditors: { cr: { b: pick("CR").b }, adv: { b: pick("ADV").b } },
     };
   }
@@ -353,10 +370,11 @@ sap.ui.define([], function () {
   let STATE = null;
 
   function ageTable(rows, total, firstHead, extra = "") {
+    const H = ageHead(total.b.length);
     const cell = (x, i, bold) =>
       `<td class="${i === 4 && x ? "down" : ""}">${x == null ? "–" : money(x)}</td>`;
     return (
-      `<tr><th>${firstHead}</th>${BUCKETS.map((b) => `<th>${b}</th>`).join("")}<th>Total</th></tr>` +
+      `<tr><th>${firstHead}</th>${H.map((b) => `<th>${b}</th>`).join("")}<th>Total</th></tr>` +
       rows
         .map(
           (r) =>
@@ -368,9 +386,10 @@ sap.ui.define([], function () {
   }
 
   function ageTile(title, rows, act) {
+    const H = ageHead(rows[0].b.length);
     return `<div class="card kpi${act ? " click" : ""}"${act ? ` data-act="${act}"` : ""}><div class="lbl">${title}</div>
     <div class="scroll"><table class="mini">
-      <tr><th></th>${BUCKETS.map((b) => `<th>${b}</th>`).join("")}<th>Total</th></tr>
+      <tr><th></th>${H.map((b) => `<th>${b}</th>`).join("")}<th>Total</th></tr>
       ${rows.map((r) => `<tr><td>${r.label}</td>${r.b.map((x, i) => `<td class="${i === 4 && x ? "down" : ""}">${x == null ? "–" : money(x)}</td>`).join("")}<td><b>${money(r.t)}</b></td></tr>`).join("")}
     </table></div></div>`;
   }
@@ -463,7 +482,7 @@ sap.ui.define([], function () {
     $("chart").innerHTML = s + "</svg>";
   }
 
-  /* Brand-wise card: max 10 brands fetched from OData ($top=10); no scroll needed */
+  /* Brand-wise card: scrolls inside .vscroll (header, first column and Grand Total stay pinned) */
   function renderBrands(d, fy, pi, u) {
     $("brandMeta").textContent =
       `${range(pi)} ${calYear(fy, pi)} · Qty in numbers · Value in ${u.name}`;
@@ -651,8 +670,8 @@ sap.ui.define([], function () {
     const { d } = STATE,
       u = unitInfo();
     openModal(
-      "Debtors Ageing",
-      `Sundry Debtors · Value in ${u.name}`,
+      "Receivables",
+      `Receivables · Value in ${u.name}`,
       `<table class="dense">${ageTable(d.debtors.rows, d.debtors.total, "Party")}</table>`,
     );
   }
@@ -1027,7 +1046,7 @@ sap.ui.define([], function () {
       <div class="card click" data-act="brandMatrix" title="Click for month-wise breakup">
         <h2>Brand-wise Sales · YTD</h2>
         <div class="meta" id="brandMeta"></div>
-        <div><table class="dense" id="brandTbl"></table></div>
+        <div class="vscroll"><table class="dense" id="brandTbl"></table></div>
       </div>
       <div class="card click" data-act="expMonthly" title="Click for month-wise breakup">
         <h2>Purchase &amp; Expenses · YTD</h2>
