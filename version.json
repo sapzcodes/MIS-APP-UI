@@ -1,5 +1,5 @@
 {
-  "version": "16828edcd8bd",
+  "version": "f46c9c46885d",
   "minApk": 4,
   "files": [
     {
@@ -38,11 +38,6 @@
       "size": 1546
     },
     {
-      "path": "js/dashboards.js",
-      "sha256": "128065a3144bcc575a1af89dd7dc2ee50b7e869af3abeaaece60cadb2caaf854",
-      "size": 871
-    },
-    {
       "path": "js/mis.js",
       "sha256": "7ded5e63d97201e72890538a483673a8bca66ca3c9c005bd519e18961bbcc7aa",
       "size": 40590
@@ -69,8 +64,8 @@
     },
     {
       "path": "zfidash/css/style.css",
-      "sha256": "ce5cd794796adbb37e871dbe4117493809281c8b8dc27395829d4662f414ecbc",
-      "size": 25970
+      "sha256": "eb3b8d2067a5df52ba20f73e841bb2cbd6884fdb842c157ee65768581e42312c",
+      "size": 25857
     },
     {
       "path": "zfidash/index.html",
@@ -79,8 +74,8 @@
     },
     {
       "path": "zfidash/js/dashboard.js",
-      "sha256": "c00cada4af35cd527468aecf566271ed111f15236b35ec2333a0ea6289c9d1c0",
-      "size": 39443
+      "sha256": "eb16c4d6a5f49e52473187a7f08f467b78f0e468e265b49e415610102a6c115c",
+      "size": 40755
     }
   ]
 }

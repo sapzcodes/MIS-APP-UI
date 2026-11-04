@@ -117,6 +117,12 @@
         refreshAgeing() can redraw it without rebuilding the whole dashboard.
      6. Red headings are CSS only (dashboard.css). */
 
+  /* DASH v14 CHANGE LOG (31 Oct 2026):
+     1. loadPL(): if the CDS returns no row or every figure is zero, show "Maybe you don't have
+        access to view this company code." instead of an empty dashboard. Reason: the CDS now
+        has a DCL (zmm_usr_bukrs), so users without an assignment get no data. New helpers
+        hasData() and showNoAccess(). */
+
   /* DASH v13 CHANGE LOG (1 Nov 2026, later still):
      1. Currency format control is now three buttons in the header (Absolute / Lakhs / Crores)
         instead of a dropdown. The active one is highlighted (class is-active). setUnit() and the
@@ -203,15 +209,18 @@
   }
 
   /* ── Last used selection (survives reload) ── */
-  var LS_KEY = "pl_dash_sel_v1";
+    var LS_KEY = "pl_dash_sel_v1";
+
+  /* one-time cleanup of the old persistent copy, so old browsers don't keep a stale selection */
+  try { localStorage.removeItem(LS_KEY); } catch (e) {}
 
   function saveSel() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify({ b: B, y: Y, v: V, d: D })); } catch (e) {}
+    try { sessionStorage.setItem(LS_KEY, JSON.stringify({ b: B, y: Y, v: V, d: D })); } catch (e) {}
   }
 
   function restoreSel() {
     try {
-      var s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+      var s = JSON.parse(sessionStorage.getItem(LS_KEY) || "null");
       if (!s || !s.b || !s.y || !s.v || !s.d) return false;
       document.getElementById("inp-bukrs").value = s.b;
       document.getElementById("inp-year").value  = s.y;
@@ -737,6 +746,25 @@
     document.getElementById("login-screen").style.display = "flex";
   }
 
+  /* True if the CDS row has at least one non-zero figure. Skips the key / text fields. */
+  function hasData(r) {
+    if (!r) return false;
+    var skip = { bukrs: 1, auth_bukrs: 1, company_name: 1, __metadata: 1 };
+    return Object.keys(r).some(function (k) {
+      if (skip[k]) return false;
+      var n = parseFloat(r[k]);
+      return !isNaN(n) && n !== 0;
+    });
+  }
+
+  /* Shown when no row comes back (DCL filtered it) or every figure is zero */
+  function showNoAccess() {
+    lastRow = null;
+    var el = document.getElementById("grid-A");
+    if (el) el.innerHTML = '<div style="text-align:center;padding:60px 20px;font-size:16px;color:#1b3a52">'
+      + 'Maybe you don\'t have access to view this company code.</div>';
+  }
+
   /* ── Fetch ──
      CDS returns a single row, pass rows[0]. Company name (company_name) goes to the header + brand label. */
   async function loadPL() {
@@ -765,14 +793,15 @@
 
         var controller = new AbortController();
         var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
-        var res = await fetch(url, { credentials: "omit", headers: { Accept: "application/json" }, signal: controller.signal });
+        var res = await fetch(url, { credentials: "include", headers: { Accept: "application/json" }, signal: controller.signal });
         clearTimeout(timeoutId);
         if (!res.ok) throw new Error("HTTP " + res.status);
         var j    = await res.json();
         var rows = j.d && j.d.results ? j.d.results : [];
 
+        if (!hasData(rows[0])) { showNoAccess(); return; }
         renderDashboard(rows[0]);
-        if (rows[0] && rows[0].company_name) {
+        if (rows[0].company_name) {
           setBrand(rows[0].company_name);
         }
         return;

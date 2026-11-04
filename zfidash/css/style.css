@@ -572,10 +572,6 @@ html, body { overflow-x: hidden; }
   .sub-card:hover .prod-order-val      { font-size: 15px; }
 }
 
-@media (min-width: 701px) and (max-width: 1100px) {
-  .dash-two-col { grid-template-columns: minmax(0,1fr); }
-}
-
 @media (max-width: 700px) {
   main { padding: 8px; }
   .dash-two-col { grid-template-columns: minmax(0,1fr); gap: 8px; }
