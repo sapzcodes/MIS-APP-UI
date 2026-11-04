@@ -1,11 +1,16 @@
 {
-  "version": "926155de56d3",
+  "version": "9f870fa29022",
   "minApk": 4,
   "files": [
     {
       "path": "Component.js",
       "sha256": "9f3fb3c8be1873fb8df8851ac1064d983d3a15b82fc0eeb8c402b594c6f176ad",
       "size": 253
+    },
+    {
+      "path": "PELOGO.webp",
+      "sha256": "4bcdd226875f29af8e720b376186c6f2b58941803ba801b4b6401b48bc85b6c7",
+      "size": 16808
     },
     {
       "path": "android-shim.js",
@@ -28,14 +33,19 @@
       "size": 14409
     },
     {
+      "path": "favicon.png",
+      "sha256": "099d75b5e200f38068a7cea1a5032d38abbe0c695c8b3af003781eb1a0fd5def",
+      "size": 1293
+    },
+    {
       "path": "i18n/i18n.properties",
       "sha256": "d8601e7f29cd45719067513fdf8243cc13b0332bb8199a5c7edf7243c6bc013b",
       "size": 259
     },
     {
       "path": "index.html",
-      "sha256": "71022d301b0cc298991ff2a80d9bc3da4e289dee7e6cdea2042aaf89a6edc80a",
-      "size": 1546
+      "sha256": "99cd6bd858bd2175fa9c9c8ffab713a5acefc082ed5b33593b6d1d3e0e953028",
+      "size": 1667
     },
     {
       "path": "js/mis.js",
@@ -69,8 +79,8 @@
     },
     {
       "path": "zfidash/index.html",
-      "sha256": "94c3fe937e60350e12e0f799a3442b3a0fea1397e5c9948bd20c0ebf4714a7c7",
-      "size": 2668
+      "sha256": "c82e720524d48385fcf586c14938ffa4334a71478a20fe4cf0e78441d1fda0fb",
+      "size": 2791
     },
     {
       "path": "zfidash/js/dashboard.js",
