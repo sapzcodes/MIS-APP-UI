@@ -793,7 +793,7 @@
 
         var controller = new AbortController();
         var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
-        var res = await fetch(url, { credentials: "include", headers: { Accept: "application/json" }, signal: controller.signal });
+        var res = await fetch(url, { credentials: "omit", headers: { Accept: "application/json" }, signal: controller.signal });
         clearTimeout(timeoutId);
         if (!res.ok) throw new Error("HTTP " + res.status);
         var j    = await res.json();
