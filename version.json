@@ -1,5 +1,5 @@
 {
-  "version": "9f870fa29022",
+  "version": "2023443b1ac5",
   "minApk": 4,
   "files": [
     {
@@ -46,6 +46,11 @@
       "path": "index.html",
       "sha256": "99cd6bd858bd2175fa9c9c8ffab713a5acefc082ed5b33593b6d1d3e0e953028",
       "size": 1667
+    },
+    {
+      "path": "js/dashboards.js",
+      "sha256": "128065a3144bcc575a1af89dd7dc2ee50b7e869af3abeaaece60cadb2caaf854",
+      "size": 871
     },
     {
       "path": "js/mis.js",
