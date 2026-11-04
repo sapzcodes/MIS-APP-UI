@@ -2,6 +2,14 @@
    Login: none here. The Android shell adds the SAP login and sap-client to every /sap/* call.
    Mounted by controller/App.controller.js into <div id="misRoot">.
 
+   CHANGE LOG (4 Nov 2026, later):
+   1. Header: the "Monthly Report" label is now "MIS Report", no company code anywhere in the header.
+      The two header texts swap style and position: the company name now sits in the big heading (#title),
+      "MIS Report · <Month Year>" in the small sub label (#crumb). Done by swapping the content only, so no CSS change.
+   2. Brand-wise Sales tile on the main screen: .vscroll removed (no scrolling), shows max 10 brands, sorted by
+      YTD value (largest first). Grand Total still covers ALL brands. The popup (brandMatrix) still lists every brand.
+   3. Payables ageing tile: Advances row removed (the Payables row alone stays).
+
    CHANGE LOG (4 Nov 2026):
    1. Receivables total did not tie with the P&L dashboard (zfi_dash). Reason: the CDS
       ZI_MIS_DebtorsAgeing now returns bucket B6 (advance + PDC, umskz A / Y, 03.11.2026), but this file
@@ -408,8 +416,9 @@ sap.ui.define([], function () {
     const lbl = mLabel(fy, pi),
       lblPrev = `${MONTHS[pi]}-${String(cyr - 1).slice(2)}`;
 
-    $("crumb").textContent = `${co} - ${d.name}`;
-    $("title").textContent = `Monthly Report · ${FULL[pi]} ${cyr}`;
+    /* header texts swapped: company name in the big heading, "MIS Report · Month Year" in the small sub label */
+    $("title").textContent = d.name || co;
+    $("crumb").textContent = `MIS Report · ${FULL[pi]} ${cyr}`;
 
     $("kpis").innerHTML = `
     <div class="card kpi click" data-act="salesValue"><div class="lbl">Sales Value · ${lbl}</div>
@@ -429,7 +438,6 @@ sap.ui.define([], function () {
     );
     $("creTile").innerHTML = ageTile("Payables · Ageing", [
       { label: "Payables", ...d.creditors.cr },
-      { label: "Advances", ...d.creditors.adv },
     ]);
 
     renderChart(fy, pi, d, u);
@@ -482,7 +490,7 @@ sap.ui.define([], function () {
     $("chart").innerHTML = s + "</svg>";
   }
 
-  /* Brand-wise card: scrolls inside .vscroll (header, first column and Grand Total stay pinned) */
+  /* Brand-wise card: no scrolling, max 10 brands (largest YTD value first). The popup (brandMatrix) lists all brands. */
   function renderBrands(d, fy, pi, u) {
     $("brandMeta").textContent =
       `${range(pi)} ${calYear(fy, pi)} · Qty in numbers · Value in ${u.name}`;
@@ -501,7 +509,9 @@ sap.ui.define([], function () {
           tv: t.v,
         };
       })
-      .filter((r) => r.tv != null);
+      .filter((r) => r.tv != null)
+      .sort((a, b) => b.tv - a.tv)
+      .slice(0, 10); // main tile shows at most 10 brands
     const grand = {
       n: "Grand Total",
       pq: pre ? sumArr(S.cq, 0, pi - 1) : null,
@@ -1003,8 +1013,8 @@ sap.ui.define([], function () {
   const MARKUP = `
 <header>
   <div class="shell-title">
-    <h1 id="title">Monthly Report</h1>
-    <span id="crumb"></span>
+    <h1 id="title"></h1>
+    <span id="crumb">MIS Report</span>
   </div>
   <div class="filters">
     <label>Company code<select id="company"></select></label>
@@ -1046,7 +1056,7 @@ sap.ui.define([], function () {
       <div class="card click" data-act="brandMatrix" title="Click for month-wise breakup">
         <h2>Brand-wise Sales · YTD</h2>
         <div class="meta" id="brandMeta"></div>
-        <div class="vscroll"><table class="dense" id="brandTbl"></table></div>
+        <div><table class="dense" id="brandTbl"></table></div>
       </div>
       <div class="card click" data-act="expMonthly" title="Click for month-wise breakup">
         <h2>Purchase &amp; Expenses · YTD</h2>

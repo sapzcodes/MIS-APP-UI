@@ -1,5 +1,5 @@
 {
-  "version": "21efda537e65",
+  "version": "16828edcd8bd",
   "minApk": 4,
   "files": [
     {
@@ -44,8 +44,8 @@
     },
     {
       "path": "js/mis.js",
-      "sha256": "390a0ce5c403ed4e401d9116b026b217770d319efaf52051f38f2738cdb64f83",
-      "size": 39763
+      "sha256": "7ded5e63d97201e72890538a483673a8bca66ca3c9c005bd519e18961bbcc7aa",
+      "size": 40590
     },
     {
       "path": "js/zfidash.js",
