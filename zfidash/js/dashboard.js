@@ -173,13 +173,21 @@
      5. Footer text (SAP S/4HANA · host name) lives in index.html, not in this file.
      6. Taller header, bigger fonts, white background and red text are CSS only (dashboard.css).
      7. Bigger fonts and more line spacing for the Revenue, Production & Purchase tile are CSS only. */
+  /* DASH v15 CHANGE LOG (6 Nov 2026):
+   1. COGM % line now shows (COGM % - 100) in red brackets, e.g. "92.50% (-7.50%)".
+      New helper fmtCogmDiff(). Hidden when cogm_pct is 0/empty so it never shows -100.00%.
+      Reason: show at a glance how far COGM is from 100% of revenue. No CDS change. */
 
-  var B = "", Y = "", V = "", D = "";
+  var B = "",
+    Y = "",
+    V = "",
+    D = "";
 
   /* ── Currency unit for ALL rupee amounts (header dropdown): "A" absolute, "L" lakhs, "C" crores ── */
   var UNIT_KEY = "pl_dash_unit_v3";
-  var UNIT = "A";   /* default Absolute */
-  var lastRow = null;   /* last CDS row, used to redraw the dashboard when the dropdown changes */
+  var UNIT = "A"; /* default Absolute */
+  var lastRow =
+    null; /* last CDS row, used to redraw the dashboard when the dropdown changes */
 
   (function loadUnit() {
     try {
@@ -189,7 +197,9 @@
   })();
 
   function saveUnit() {
-    try { localStorage.setItem(UNIT_KEY, UNIT); } catch (e) {}
+    try {
+      localStorage.setItem(UNIT_KEY, UNIT);
+    } catch (e) {}
   }
 
   /* Header dropdown handler: save the unit and redraw from the last data (no new SAP call) */
@@ -209,13 +219,20 @@
   }
 
   /* ── Last used selection (survives reload) ── */
-    var LS_KEY = "pl_dash_sel_v1";
+  var LS_KEY = "pl_dash_sel_v1";
 
   /* one-time cleanup of the old persistent copy, so old browsers don't keep a stale selection */
-  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  try {
+    localStorage.removeItem(LS_KEY);
+  } catch (e) {}
 
   function saveSel() {
-    try { sessionStorage.setItem(LS_KEY, JSON.stringify({ b: B, y: Y, v: V, d: D })); } catch (e) {}
+    try {
+      sessionStorage.setItem(
+        LS_KEY,
+        JSON.stringify({ b: B, y: Y, v: V, d: D }),
+      );
+    } catch (e) {}
   }
 
   function restoreSel() {
@@ -223,11 +240,13 @@
       var s = JSON.parse(sessionStorage.getItem(LS_KEY) || "null");
       if (!s || !s.b || !s.y || !s.v || !s.d) return false;
       document.getElementById("inp-bukrs").value = s.b;
-      document.getElementById("inp-year").value  = s.y;
+      document.getElementById("inp-year").value = s.y;
       document.getElementById("inp-versn").value = s.v;
-      document.getElementById("inp-date").value  = s.d;
+      document.getElementById("inp-date").value = s.d;
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      return false;
+    }
   }
 
   /* Brand label = company name (falls back to company code, then "Dashboard") */
@@ -242,7 +261,20 @@
 
   /* "October 2026" for the month of iso, offset months away (-1 = previous month) */
   function monthLabel(iso, offset) {
-    var names = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    var names = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
     var p = iso.split("-");
     var d = new Date(Date.UTC(+p[0], +p[1] - 1 + offset, 1));
     return names[d.getUTCMonth()] + " " + d.getUTCFullYear();
@@ -257,7 +289,20 @@
 
   function isoToDisplay(iso) {
     var parts = iso.split("-");
-    var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    var months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     return parts[2] + " " + months[parseInt(parts[1], 10) - 1] + " " + parts[0];
   }
 
@@ -268,15 +313,32 @@
     return d.toISOString().slice(0, 10);
   }
 
-  function isoToOdata(e) { return "datetime'" + e + "T00:00:00'"; }
+  function isoToOdata(e) {
+    return "datetime'" + e + "T00:00:00'";
+  }
 
   /* Scale an absolute rupee number to the selected unit: absolute (no decimals),
      lakhs (2 decimals + " L") or crores (2 decimals + " Cr"). Quantities never go through this. */
   function scaleStr(absVal) {
-    var d = absVal, digits = 0, suffix = "";
-    if (UNIT === "L") { d = absVal / 100000;   digits = 2; suffix = " L";  }
-    if (UNIT === "C") { d = absVal / 10000000; digits = 2; suffix = " Cr"; }
-    return d.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits }) + suffix;
+    var d = absVal,
+      digits = 0,
+      suffix = "";
+    if (UNIT === "L") {
+      d = absVal / 100000;
+      digits = 2;
+      suffix = " L";
+    }
+    if (UNIT === "C") {
+      d = absVal / 10000000;
+      digits = 2;
+      suffix = " Cr";
+    }
+    return (
+      d.toLocaleString("en-IN", {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      }) + suffix
+    );
   }
 
   function fmtAmt(val) {
@@ -290,20 +352,39 @@
     var n = parseFloat(val);
     if (isNaN(n) || n === 0) return { raw: "\u20b9\u00a00", cls: "zero-val" };
     var abs = scaleStr(Math.abs(n));
-    return { raw: (n < 0 ? "- \u20b9\u00a0" : "\u20b9\u00a0") + abs, cls: "income" };
+    return {
+      raw: (n < 0 ? "- \u20b9\u00a0" : "\u20b9\u00a0") + abs,
+      cls: "income",
+    };
   }
 
   function fmtPurch(val) {
     var n = parseFloat(val);
     if (isNaN(n) || n === 0) return { raw: "\u20b9\u00a00", cls: "zero-val" };
     var abs = scaleStr(Math.abs(n));
-    return { raw: (n < 0 ? "- \u20b9\u00a0" : "\u20b9\u00a0") + abs, cls: "expense" };
+    return {
+      raw: (n < 0 ? "- \u20b9\u00a0" : "\u20b9\u00a0") + abs,
+      cls: "expense",
+    };
   }
 
   function fmtPct(val) {
     var n = parseFloat(val);
     if (isNaN(n) || n === 0) return "0.00%";
     return n.toFixed(2) + "%";
+  }
+
+  /* COGM % minus 100, shown in red brackets next to COGM %. Empty when there is no COGM value. */
+  function fmtCogmDiff(val) {
+    var n = parseFloat(val);
+    if (isNaN(n) || n === 0) return "";
+    var d = n - 100;
+    return (
+      ' <span class="cogm-diff" style="color:#d32f2f">(' +
+      (d > 0 ? "+" : "") +
+      d.toFixed(2) +
+      "%)</span>"
+    );
   }
 
   function fmtNum(val) {
@@ -318,107 +399,162 @@
       ? "- \u20b9\u00a0" + f.raw.slice(2)
       : "\u20b9\u00a0" + f.raw;
   }
-  function fmtRsVal(v) { return fmtRs(fmtAmt(v)); }
+  function fmtRsVal(v) {
+    return fmtRs(fmtAmt(v));
+  }
 
   /* Amount in the selected unit with rupee sign (ageing table / chart, rounded to 2 decimals first).
      Same colour classes as fmtAmt (negative = neg, positive = pos, zero = zero-val). */
   function fmtUnit(val) {
     var n = Math.round((parseFloat(val) || 0) * 100) / 100;
     if (n === 0) return { raw: "\u20b9\u00a00", cls: "zero-val" };
-    return { raw: (n < 0 ? "- " : "") + "\u20b9\u00a0" + scaleStr(Math.abs(n)), cls: n < 0 ? "neg" : "pos" };
+    return {
+      raw: (n < 0 ? "- " : "") + "\u20b9\u00a0" + scaleStr(Math.abs(n)),
+      cls: n < 0 ? "neg" : "pos",
+    };
   }
 
   /* ── SVG icons ── */
   var IC = {
-    calendar: '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">'
-      + '<rect x="1" y="2" width="14" height="13" rx="2" stroke="#1b3a52" stroke-width="1.4"/>'
-      + '<path d="M1 6h14" stroke="#1b3a52" stroke-width="1.4"/>'
-      + '<path d="M5 1v3M11 1v3" stroke="#1b3a52" stroke-width="1.4" stroke-linecap="round"/>'
-      + '</svg>',
-    chart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-      + '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 15l4-5 4 3 4-6"/>'
-      + '</svg>',
-    box: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-      + '<path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/>'
-      + '</svg>',
-    factory: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-      + '<path d="M2 20h20M4 20V10l5 4V10l5 4V4l6 6v10"/>'
-      + '</svg>',
-    people: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-      + '<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>'
-      + '<path d="M16 3a4 4 0 0 1 0 8M21 21v-2a4 4 0 0 0-3-3.87"/>'
-      + '</svg>',
-    coin: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-      + '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a2.5 2.5 0 0 1 0 5H9"/>'
-      + '</svg>',
-    block: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-      + '<circle cx="12" cy="12" r="9"/><line x1="4.22" y1="4.22" x2="19.78" y2="19.78"/>'
-      + '</svg>'
+    calendar:
+      '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect x="1" y="2" width="14" height="13" rx="2" stroke="#1b3a52" stroke-width="1.4"/>' +
+      '<path d="M1 6h14" stroke="#1b3a52" stroke-width="1.4"/>' +
+      '<path d="M5 1v3M11 1v3" stroke="#1b3a52" stroke-width="1.4" stroke-linecap="round"/>' +
+      "</svg>",
+    chart:
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 15l4-5 4 3 4-6"/>' +
+      "</svg>",
+    box:
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M21 16V8l-9-5-9 5v8l9 5 9-5z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/>' +
+      "</svg>",
+    factory:
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M2 20h20M4 20V10l5 4V10l5 4V4l6 6v10"/>' +
+      "</svg>",
+    people:
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>' +
+      '<path d="M16 3a4 4 0 0 1 0 8M21 21v-2a4 4 0 0 0-3-3.87"/>' +
+      "</svg>",
+    coin:
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a2.5 2.5 0 0 1 0 5H9"/>' +
+      "</svg>",
+    block:
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1b3a52" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+      '<circle cx="12" cy="12" r="9"/><line x1="4.22" y1="4.22" x2="19.78" y2="19.78"/>' +
+      "</svg>",
   };
 
   var CHEVRON = '<span class="tile-hdr-chevron">&#8250;</span>';
 
-  var LOADING_HTML = '<div class="loading-wrap">'
-    + '<div class="loading-spinner"></div>'
-    + '<div class="loading-text">Fetching data\u2026</div>'
-    + '</div>';
+  var LOADING_HTML =
+    '<div class="loading-wrap">' +
+    '<div class="loading-spinner"></div>' +
+    '<div class="loading-text">Fetching data\u2026</div>' +
+    "</div>";
 
   /* ── HTML builder helpers ── */
 
   function outerTile(icon, title, body, extra) {
-    return '<div class="tile' + (extra ? ' ' + extra : '') + '">'
-      + '<div class="tile-hdr" role="button" tabindex="0" aria-label="Expand ' + title.replace(/&amp;/g,'&') + '">'
-      + '<div class="tile-hdr-left">'
-      + '<span class="tile-hdr-icon">' + icon + '</span>'
-      + '<span class="tile-hdr-title">' + title + '</span>'
-      + '</div>'
-      + CHEVRON
-      + '</div>'
-      + '<div class="tile-body">' + body + '</div>'
-      + '</div>';
+    return (
+      '<div class="tile' +
+      (extra ? " " + extra : "") +
+      '">' +
+      '<div class="tile-hdr" role="button" tabindex="0" aria-label="Expand ' +
+      title.replace(/&amp;/g, "&") +
+      '">' +
+      '<div class="tile-hdr-left">' +
+      '<span class="tile-hdr-icon">' +
+      icon +
+      "</span>" +
+      '<span class="tile-hdr-title">' +
+      title +
+      "</span>" +
+      "</div>" +
+      CHEVRON +
+      "</div>" +
+      '<div class="tile-body">' +
+      body +
+      "</div>" +
+      "</div>"
+    );
   }
 
   function periodCard(label, bodyHtml) {
-    return '<div class="sub-card" role="button" tabindex="0">'
-      + '<div class="sub-card-hdr">'
-      + '<span class="sub-card-hdr-icon">' + IC.calendar + '</span>'
-      + '<span class="sub-card-hdr-title">' + label + '</span>'
-      + '</div>'
-      + bodyHtml
-      + '</div>';
+    return (
+      '<div class="sub-card" role="button" tabindex="0">' +
+      '<div class="sub-card-hdr">' +
+      '<span class="sub-card-hdr-icon">' +
+      IC.calendar +
+      "</span>" +
+      '<span class="sub-card-hdr-title">' +
+      label +
+      "</span>" +
+      "</div>" +
+      bodyHtml +
+      "</div>"
+    );
   }
 
   /* Merged tile rows: Revenue, Production, Purchase.
      prodQty is passed only for the "For Date" card -> production shows "qty / value".
      Other cards: prodQty undefined -> value only. */
   function pvpBlock(saleF, purchF, prodVal, prodQty) {
-    var prodTxt = (prodQty === undefined) ? prodVal : (prodQty + ' / ' + prodVal);
-    return '<div class="pvs-row">'
-      + '<span class="pvs-label">Revenue</span>'
-      + '<span class="pvs-val ' + saleF.cls + '">' + saleF.raw + '</span>'
-      + '</div>'
-      + '<div class="pvs-row">'
-      + '<span class="pvs-label">Production</span>'
-      + '<span class="pvs-val">' + prodTxt + '</span>'
-      + '</div>'
-      + '<div class="pvs-row">'
-      + '<span class="pvs-label">Purchase</span>'
-      + '<span class="pvs-val ' + purchF.cls + '">' + purchF.raw + '</span>'
-      + '</div>';
+    var prodTxt = prodQty === undefined ? prodVal : prodQty + " / " + prodVal;
+    return (
+      '<div class="pvs-row">' +
+      '<span class="pvs-label">Revenue</span>' +
+      '<span class="pvs-val ' +
+      saleF.cls +
+      '">' +
+      saleF.raw +
+      "</span>" +
+      "</div>" +
+      '<div class="pvs-row">' +
+      '<span class="pvs-label">Production</span>' +
+      '<span class="pvs-val">' +
+      prodTxt +
+      "</span>" +
+      "</div>" +
+      '<div class="pvs-row">' +
+      '<span class="pvs-label">Purchase</span>' +
+      '<span class="pvs-val ' +
+      purchF.cls +
+      '">' +
+      purchF.raw +
+      "</span>" +
+      "</div>"
+    );
   }
 
   /* Production Order card: label + "qty / value" (or just q when v is not passed) */
   function poCard(label, q, v) {
-    return '<div class="sub-card prod-order-card" role="button" tabindex="0">'
-      + '<div class="prod-order-label">' + label + '</div>'
-      + '<div class="prod-order-val">' + q + (v === undefined ? '' : ' / ' + v) + '</div>'
-      + '</div>';
+    return (
+      '<div class="sub-card prod-order-card" role="button" tabindex="0">' +
+      '<div class="prod-order-label">' +
+      label +
+      "</div>" +
+      '<div class="prod-order-val">' +
+      q +
+      (v === undefined ? "" : " / " + v) +
+      "</div>" +
+      "</div>"
+    );
   }
 
   /* Production Order sub-heading (month name) */
   function poSubHdr(text, first) {
-    return '<div class="po-subhdr" style="font-size:12px;font-weight:600;color:#1b3a52;padding-left:15px;margin:'
-      + (first ? '2px' : '6px') + ' 0 4px">' + text + '</div>';
+    return (
+      '<div class="po-subhdr" style="font-size:12px;font-weight:600;color:#1b3a52;padding-left:15px;margin:' +
+      (first ? "2px" : "6px") +
+      ' 0 4px">' +
+      text +
+      "</div>"
+    );
   }
 
   /* Ageing mix: split of one party type (debtors / creditors) into
@@ -426,49 +562,90 @@
      Absolute values, so creditors (negative in the CDS) draw like debtors. */
   function ageParts(total, g60, g120) {
     var t = Math.abs(parseFloat(total) || 0);
-    var b = Math.abs(parseFloat(g60)   || 0);
-    var c = Math.abs(parseFloat(g120)  || 0);
+    var b = Math.abs(parseFloat(g60) || 0);
+    var c = Math.abs(parseFloat(g120) || 0);
     var a = Math.max(t - b - c, 0);
     return { t: t, a: a, b: b, c: c, sum: a + b + c };
   }
 
   function ageingRow(label, p, max) {
-    var w = max > 0 ? (p.sum / max * 100) : 0;
+    var w = max > 0 ? (p.sum / max) * 100 : 0;
     function seg(v, cls) {
-      return (p.sum > 0 && v > 0)
-        ? '<span class="ag-seg ' + cls + '" style="width:' + (v / p.sum * 100) + '%" title="' + fmtUnit(v).raw + '"></span>'
-        : '';
+      return p.sum > 0 && v > 0
+        ? '<span class="ag-seg ' +
+            cls +
+            '" style="width:' +
+            (v / p.sum) * 100 +
+            '%" title="' +
+            fmtUnit(v).raw +
+            '"></span>'
+        : "";
     }
-    return '<div class="ag-row">'
-      + '<span class="ag-lbl">' + label + '</span>'
-      + '<div class="ag-track"><div class="ag-bar" style="width:' + (p.sum > 0 ? Math.max(w, 2) : 0) + '%">'
-      + seg(p.a, "ag-a") + seg(p.b, "ag-b") + seg(p.c, "ag-c")
-      + '</div></div>'
-      + '<span class="ag-tot">' + fmtUnit(p.t).raw + '</span>'
-      + '</div>';
+    return (
+      '<div class="ag-row">' +
+      '<span class="ag-lbl">' +
+      label +
+      "</span>" +
+      '<div class="ag-track"><div class="ag-bar" style="width:' +
+      (p.sum > 0 ? Math.max(w, 2) : 0) +
+      '%">' +
+      seg(p.a, "ag-a") +
+      seg(p.b, "ag-b") +
+      seg(p.c, "ag-c") +
+      "</div></div>" +
+      '<span class="ag-tot">' +
+      fmtUnit(p.t).raw +
+      "</span>" +
+      "</div>"
+    );
   }
 
   /* ── Ageing table (Creditors / Debtors) ── */
 
   function ageTableRow(label, tot, g60, g120) {
-    var t = parseFloat(tot)  || 0;
-    var b = parseFloat(g60)  || 0;
+    var t = parseFloat(tot) || 0;
+    var b = parseFloat(g60) || 0;
     var c = parseFloat(g120) || 0;
-    var a = t - b - c;   /* 0 to 60 days, signed so creditors (negative) stay consistent */
-    function cell(v) { var f = fmtUnit(v); return '<td class="' + f.cls + '">' + f.raw + '</td>'; }
-    return '<tr><td class="age-lbl">' + label + '</td>'
-      + cell(t) + cell(a) + cell(b) + cell(c)
-      + '</tr>';
+    var a =
+      t -
+      b -
+      c; /* 0 to 60 days, signed so creditors (negative) stay consistent */
+    function cell(v) {
+      var f = fmtUnit(v);
+      return '<td class="' + f.cls + '">' + f.raw + "</td>";
+    }
+    return (
+      '<tr><td class="age-lbl">' +
+      label +
+      "</td>" +
+      cell(t) +
+      cell(a) +
+      cell(b) +
+      cell(c) +
+      "</tr>"
+    );
   }
 
   function ageTableInner(r) {
     r = r || {};
-    return '<table class="age-table">'
-      + '<thead><tr><th></th><th>Total</th><th>0 to 60 days</th><th>&gt;60 to &lt;120</th><th>&gt;120</th></tr></thead>'
-      + '<tbody>'
-      + ageTableRow("Payable",    r.SUNDRY_CRED_TOT, r.SUNDRY_CRED_60, r.SUNDRY_CRED_120)
-      + ageTableRow("Receivable", r.SUNDRY_DEBT_TOT, r.SUNDRY_DEBT_60, r.SUNDRY_DEBT_120)
-      + '</tbody></table>';
+    return (
+      '<table class="age-table">' +
+      "<thead><tr><th></th><th>Total</th><th>0 to 60 days</th><th>&gt;60 to &lt;120</th><th>&gt;120</th></tr></thead>" +
+      "<tbody>" +
+      ageTableRow(
+        "Payable",
+        r.SUNDRY_CRED_TOT,
+        r.SUNDRY_CRED_60,
+        r.SUNDRY_CRED_120,
+      ) +
+      ageTableRow(
+        "Receivable",
+        r.SUNDRY_DEBT_TOT,
+        r.SUNDRY_DEBT_60,
+        r.SUNDRY_DEBT_120,
+      ) +
+      "</tbody></table>"
+    );
   }
 
   function ageChartInner(r) {
@@ -476,15 +653,17 @@
     var agD = ageParts(r.SUNDRY_DEBT_TOT, r.SUNDRY_DEBT_60, r.SUNDRY_DEBT_120);
     var agC = ageParts(r.SUNDRY_CRED_TOT, r.SUNDRY_CRED_60, r.SUNDRY_CRED_120);
     var agMax = Math.max(agD.sum, agC.sum);
-    return '<div class="ag-legend">'
-      + '<span><i class="ag-dot ag-a"></i>Up to 60 days</span>'
-      + '<span><i class="ag-dot ag-b"></i>60 - 120 days</span>'
-      + '<span><i class="ag-dot ag-c"></i>&gt; 120 days</span>'
-      + '</div>'
-      + '<div class="ag-chart">'
-      + ageingRow("Payable", agC, agMax)
-      + ageingRow("Receivable", agD, agMax)
-      + '</div>';
+    return (
+      '<div class="ag-legend">' +
+      '<span><i class="ag-dot ag-a"></i>Up to 60 days</span>' +
+      '<span><i class="ag-dot ag-b"></i>60 - 120 days</span>' +
+      '<span><i class="ag-dot ag-c"></i>&gt; 120 days</span>' +
+      "</div>" +
+      '<div class="ag-chart">' +
+      ageingRow("Payable", agC, agMax) +
+      ageingRow("Receivable", agD, agMax) +
+      "</div>"
+    );
   }
 
   /* ── Tile popup ──
@@ -497,7 +676,7 @@
      just the first time. ESC listener registered only once via _escBound flag. */
 
   var popupBackdrop = null;
-  var popupPanel    = null;
+  var popupPanel = null;
 
   function buildPopupDOM() {
     /* Create backdrop */
@@ -527,17 +706,25 @@
     if (!popupBackdrop) buildPopupDOM();
 
     popupPanel.innerHTML =
-      '<div class="tile-popup-hdr">'
-      + '<div class="tile-popup-hdr-left">'
-      + '<span class="tile-popup-hdr-icon">' + iconHtml + '</span>'
-      + '<span class="tile-popup-hdr-title">' + titleHtml + '</span>'
-      + '</div>'
-      + '<button class="tile-popup-close" aria-label="Close">&times;</button>'
-      + '</div>'
-      + '<div class="tile-popup-body">' + bodyHtml + '</div>';
+      '<div class="tile-popup-hdr">' +
+      '<div class="tile-popup-hdr-left">' +
+      '<span class="tile-popup-hdr-icon">' +
+      iconHtml +
+      "</span>" +
+      '<span class="tile-popup-hdr-title">' +
+      titleHtml +
+      "</span>" +
+      "</div>" +
+      '<button class="tile-popup-close" aria-label="Close">&times;</button>' +
+      "</div>" +
+      '<div class="tile-popup-body">' +
+      bodyHtml +
+      "</div>";
 
     /* Close button */
-    popupPanel.querySelector(".tile-popup-close").addEventListener("click", closePopup);
+    popupPanel
+      .querySelector(".tile-popup-close")
+      .addEventListener("click", closePopup);
 
     /* Strip is-visible + force reflow so CSS transition fires fresh every open */
     popupBackdrop.classList.remove("is-visible");
@@ -561,26 +748,29 @@
 
   function attachTilePopup(container) {
     container.querySelectorAll(".tile").forEach(function (tile) {
-      var hdr  = tile.querySelector(".tile-hdr");
+      var hdr = tile.querySelector(".tile-hdr");
       var body = tile.querySelector(".tile-body");
       if (!hdr || !body) return;
 
-      var iconEl  = hdr.querySelector(".tile-hdr-icon");
+      var iconEl = hdr.querySelector(".tile-hdr-icon");
       var titleEl = hdr.querySelector(".tile-hdr-title");
 
       function open(e) {
         /* Don't fire if a sub-card inside body was clicked */
         if (e.target.closest && e.target.closest(".tile-body")) return;
         openPopup(
-          iconEl  ? iconEl.innerHTML  : "",
+          iconEl ? iconEl.innerHTML : "",
           titleEl ? titleEl.innerHTML : "",
-          body.innerHTML
+          body.innerHTML,
         );
       }
 
       hdr.addEventListener("click", open);
       hdr.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); }
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open(e);
+        }
       });
     });
   }
@@ -595,9 +785,12 @@
     var rA = r || {};
     lastRow = rA;
 
-    var salePrev  = fmtSale(rA.total_sales_tillyest),  purchPrev  = fmtPurch(rA.total_purchase_tillyest);
-    var saleToday = fmtSale(rA.total_sales_today),     purchToday = fmtPurch(rA.total_purchase_today);
-    var saleAson  = fmtSale(rA.total_sales_ason),      purchAson  = fmtPurch(rA.total_purchase_ason);
+    var salePrev = fmtSale(rA.total_sales_tillyest),
+      purchPrev = fmtPurch(rA.total_purchase_tillyest);
+    var saleToday = fmtSale(rA.total_sales_today),
+      purchToday = fmtPurch(rA.total_purchase_today);
+    var saleAson = fmtSale(rA.total_sales_ason),
+      purchAson = fmtPurch(rA.total_purchase_ason);
 
     var stkFG = fmtAmt(rA.stock_value_FG);
     var stkRM = fmtAmt(rA.stock_value_RM);
@@ -605,16 +798,23 @@
 
     /* Production orders: FG only (mtart 50-59).
        Current month: open qty, open value, orders > 7 days. Till previous month: open + WIP (qty / value). */
-    var openC  = fmtNum(rA.open_curr_qty),  openCV = fmtRs(fmtAmt(rA.open_curr_value));
-    var wipC   = fmtNum(rA.wip_curr_qty),   wipCV  = fmtRs(fmtAmt(rA.wip_curr_value));
-    var gt7C   = fmtNum(rA.open_curr_gt7_qty), gt7CV = fmtRs(fmtAmt(rA.open_curr_gt7_value));
-    var openP  = fmtNum(rA.open_prev_qty),  openPV = fmtRs(fmtAmt(rA.open_prev_value));
-    var wipP   = fmtNum(rA.wip_prev_qty),   wipPV  = fmtRs(fmtAmt(rA.wip_prev_value));
-    var curMonth  = monthLabel(D, 0);
+    var openC = fmtNum(rA.open_curr_qty),
+      openCV = fmtRs(fmtAmt(rA.open_curr_value));
+    var wipC = fmtNum(rA.wip_curr_qty),
+      wipCV = fmtRs(fmtAmt(rA.wip_curr_value));
+    var gt7C = fmtNum(rA.open_curr_gt7_qty),
+      gt7CV = fmtRs(fmtAmt(rA.open_curr_gt7_value));
+    var openP = fmtNum(rA.open_prev_qty),
+      openPV = fmtRs(fmtAmt(rA.open_prev_value));
+    var wipP = fmtNum(rA.wip_prev_qty),
+      wipPV = fmtRs(fmtAmt(rA.wip_prev_value));
+    var curMonth = monthLabel(D, 0);
     var prevMonth = monthLabel(D, -1);
 
     /* Production value per period + production qty for "For Date" only (new CDS field production_qty_today) */
-    var pPrev  = fmtRsVal(rA.production_prev),  pToday  = fmtRsVal(rA.production_today), pAson  = fmtRsVal(rA.production_total);
+    var pPrev = fmtRsVal(rA.production_prev),
+      pToday = fmtRsVal(rA.production_today),
+      pAson = fmtRsVal(rA.production_total);
     var pTodayQty = fmtNum(rA.production_qty_today);
 
     /* Selected date shown next to every "For Date" label */
@@ -624,75 +824,113 @@
     var left = "";
 
     /* Merged tile: Revenue, Production & Purchase (rows: Revenue, Production, Purchase) */
-    left += outerTile(IC.chart, "Revenue, Production &amp; Purchase",
-      '<div class="sub-row cols-3">'
-      + periodCard(prevLabel,    pvpBlock(salePrev,  purchPrev,  pPrev))
-      + periodCard(forDateLabel, pvpBlock(saleToday, purchToday, pToday, pTodayQty))
-      + periodCard(asonLabel,    pvpBlock(saleAson,  purchAson,  pAson))
-      + '</div>'
+    left += outerTile(
+      IC.chart,
+      "Revenue, Production &amp; Purchase",
+      '<div class="sub-row cols-3">' +
+        periodCard(prevLabel, pvpBlock(salePrev, purchPrev, pPrev)) +
+        periodCard(
+          forDateLabel,
+          pvpBlock(saleToday, purchToday, pToday, pTodayQty),
+        ) +
+        periodCard(asonLabel, pvpBlock(saleAson, purchAson, pAson)) +
+        "</div>",
     );
 
-    left += outerTile(IC.factory, "Production Order",
-      poSubHdr("Current Month - " + curMonth, true)
-      + '<div class="prod-order-row">'
-      + poCard("Open Orders Qty / Value", openC, openCV)
-      + poCard("WIP Orders Qty / Value", wipC, wipCV)
-      + poCard("Orders &gt; 7 Days Qty / Value", gt7C, gt7CV)
-      + '</div>'
-      + poSubHdr("Till Previous Month - " + prevMonth, false)
-      + '<div class="prod-order-row">'
-      + poCard("Open Orders Qty / Value", openP, openPV)
-      + poCard("WIP Orders Qty / Value", wipP, wipPV)
-      + '</div>',
-      "tile--fill"
+    left += outerTile(
+      IC.factory,
+      "Production Order",
+      poSubHdr("Current Month - " + curMonth, true) +
+        '<div class="prod-order-row">' +
+        poCard("Open Orders Qty / Value", openC, openCV) +
+        poCard("WIP Orders Qty / Value", wipC, wipCV) +
+        poCard("Orders &gt; 7 Days Qty / Value", gt7C, gt7CV) +
+        "</div>" +
+        poSubHdr("Till Previous Month - " + prevMonth, false) +
+        '<div class="prod-order-row">' +
+        poCard("Open Orders Qty / Value", openP, openPV) +
+        poCard("WIP Orders Qty / Value", wipP, wipPV) +
+        "</div>",
+      "tile--fill",
     );
 
     var right = "";
 
-    right += outerTile(IC.box, "Stock &amp; Rejection &amp; Cost",
-      '<div class="sub-row cols-2">'
-      + '<div class="sub-card" role="button" tabindex="0">'
-      + '<div class="sub-card-hdr"><span class="sub-card-hdr-icon">' + IC.box + '</span>'
-      + '<span class="sub-card-hdr-title">Stock Value</span></div>'
-      + '<div class="stk-row">'
-      + '<div class="sub-val-label">Finished Goods</div>'
-      + '<div class="sub-val-amount ' + stkFG.cls + '">' + fmtRs(stkFG) + '</div>'
-      + '</div>'
-      + '<div class="stk-row">'
-      + '<div class="sub-val-label">Raw Materials</div>'
-      + '<div class="sub-val-amount ' + stkRM.cls + '">' + fmtRs(stkRM) + '</div>'
-      + '</div>'
-      + '</div>'
-      + '<div class="sub-card" role="button" tabindex="0">'
-      + '<div class="sub-card-hdr"><span class="sub-card-hdr-icon">' + IC.block + '</span>'
-      + '<span class="sub-card-hdr-title">Rejection Store Value</span></div>'
-      + '<div class="sub-val-amount ' + rejS.cls + '" style="font-size:18px;margin-top:6px">' + fmtRs(rejS) + '</div>'
-      + '</div>'
-      + '<div class="cost-line">'
-      + '<span class="cost-line-lbl">' + IC.coin + 'COGM %</span>'
-      + '<span class="cost-line-val">' + fmtPct(rA.cogm_pct) + '</span>'
-      + '</div>'
-      + '</div>'
+    right += outerTile(
+      IC.box,
+      "Stock &amp; Rejection &amp; Cost",
+      '<div class="sub-row cols-2">' +
+        '<div class="sub-card" role="button" tabindex="0">' +
+        '<div class="sub-card-hdr"><span class="sub-card-hdr-icon">' +
+        IC.box +
+        "</span>" +
+        '<span class="sub-card-hdr-title">Stock Value</span></div>' +
+        '<div class="stk-row">' +
+        '<div class="sub-val-label">Finished Goods</div>' +
+        '<div class="sub-val-amount ' +
+        stkFG.cls +
+        '">' +
+        fmtRs(stkFG) +
+        "</div>" +
+        "</div>" +
+        '<div class="stk-row">' +
+        '<div class="sub-val-label">Raw Materials</div>' +
+        '<div class="sub-val-amount ' +
+        stkRM.cls +
+        '">' +
+        fmtRs(stkRM) +
+        "</div>" +
+        "</div>" +
+        "</div>" +
+        '<div class="sub-card" role="button" tabindex="0">' +
+        '<div class="sub-card-hdr"><span class="sub-card-hdr-icon">' +
+        IC.block +
+        "</span>" +
+        '<span class="sub-card-hdr-title">Rejection Store Value</span></div>' +
+        '<div class="sub-val-amount ' +
+        rejS.cls +
+        '" style="font-size:18px;margin-top:6px">' +
+        fmtRs(rejS) +
+        "</div>" +
+        "</div>" +
+        '<div class="cost-line">' +
+        '<span class="cost-line-lbl">' +
+        IC.coin +
+        "COGM %</span>" +
+        '<span class="cost-line-val">' +
+        fmtPct(rA.cogm_pct) +
+        fmtCogmDiff(rA.cogm_pct) +
+        "</span>" +
+        "</div>" +
+        "</div>",
     );
 
     /* Payables (creditors) + Receivables (debtors) as ONE ageing table with the currency switch.
        Creditors = vendor ageing, Debtors = customer ageing (from the CDS). */
-    right += outerTile(IC.people, "Payables &amp; Receivables",
-      '<div class="age-wrap" data-host="table">' + ageTableInner(rA) + '</div>'
+    right += outerTile(
+      IC.people,
+      "Payables &amp; Receivables",
+      '<div class="age-wrap" data-host="table">' + ageTableInner(rA) + "</div>",
     );
 
     /* Ageing mix chart: fills the space under the right column (tile--grow stretches it
        to the height of the left column). Shared scale so debtors vs creditors size compares. */
-    right += outerTile(IC.chart, "Ageing Mix",
-      '<div data-host="chart">' + ageChartInner(rA) + '</div>',
-      "tile--grow"
+    right += outerTile(
+      IC.chart,
+      "Ageing Mix",
+      '<div data-host="chart">' + ageChartInner(rA) + "</div>",
+      "tile--grow",
     );
 
     el.innerHTML =
-      '<div class="dash-two-col">'
-      + '<div class="dash-col">' + left  + '</div>'
-      + '<div class="dash-col">' + right + '</div>'
-      + '</div>';
+      '<div class="dash-two-col">' +
+      '<div class="dash-col">' +
+      left +
+      "</div>" +
+      '<div class="dash-col">' +
+      right +
+      "</div>" +
+      "</div>";
 
     /* attachSubCardToggle removed — hover handled by CSS :hover rules in dashboard.css */
     attachTilePopup(el);
@@ -716,22 +954,37 @@
   /* ── Login ── */
   function doLogin() {
     var bukrs = document.getElementById("inp-bukrs").value.trim().toUpperCase();
-    var year  = document.getElementById("inp-year").value.trim();
+    var year = document.getElementById("inp-year").value.trim();
     var versn = document.getElementById("inp-versn").value.trim().toUpperCase();
-    var date  = document.getElementById("inp-date").value.trim();
+    var date = document.getElementById("inp-date").value.trim();
     var errEl = document.getElementById("login-err");
     errEl.style.display = "none";
 
-    if (!bukrs) { errEl.textContent = "Please enter a company code."; errEl.style.display = "block"; return; }
-    if (!year || !/^\d{4}$/.test(year)) { errEl.textContent = "Enter a valid 4-digit fiscal year."; errEl.style.display = "block"; return; }
-    if (!versn) { errEl.textContent = "Please enter the FS version (e.g. PEPL)."; errEl.style.display = "block"; return; }
+    if (!bukrs) {
+      errEl.textContent = "Please enter a company code.";
+      errEl.style.display = "block";
+      return;
+    }
+    if (!year || !/^\d{4}$/.test(year)) {
+      errEl.textContent = "Enter a valid 4-digit fiscal year.";
+      errEl.style.display = "block";
+      return;
+    }
+    if (!versn) {
+      errEl.textContent = "Please enter the FS version (e.g. PEPL).";
+      errEl.style.display = "block";
+      return;
+    }
 
-    B = bukrs; Y = year; V = versn; D = date || todayISO();
+    B = bukrs;
+    Y = year;
+    V = versn;
+    D = date || todayISO();
     saveSel();
     setBrand(B); /* company code until loadPL() brings the company name */
 
-    document.getElementById("hdr-year").textContent  = "FY: "  + Y;
-    document.getElementById("hdr-date").textContent  = isoToDisplay(D);
+    document.getElementById("hdr-year").textContent = "FY: " + Y;
+    document.getElementById("hdr-date").textContent = isoToDisplay(D);
     document.getElementById("login-screen").style.display = "none";
     hideSections();
     loadPL();
@@ -739,9 +992,9 @@
 
   function changeParams() {
     document.getElementById("inp-bukrs").value = B;
-    document.getElementById("inp-year").value  = Y;
+    document.getElementById("inp-year").value = Y;
     document.getElementById("inp-versn").value = V;
-    document.getElementById("inp-date").value  = D;
+    document.getElementById("inp-date").value = D;
     document.getElementById("login-err").style.display = "none";
     document.getElementById("login-screen").style.display = "flex";
   }
@@ -761,8 +1014,10 @@
   function showNoAccess() {
     lastRow = null;
     var el = document.getElementById("grid-A");
-    if (el) el.innerHTML = '<div style="text-align:center;padding:60px 20px;font-size:16px;color:#1b3a52">'
-      + 'Maybe you don\'t have access to view this company code.</div>';
+    if (el)
+      el.innerHTML =
+        '<div style="text-align:center;padding:60px 20px;font-size:16px;color:#1b3a52">' +
+        "Maybe you don't have access to view this company code.</div>";
   }
 
   /* ── Fetch ──
@@ -774,9 +1029,18 @@
     var el = document.getElementById("grid-A");
     if (el) el.innerHTML = LOADING_HTML;
 
-    var url = "/sap/opu/odata/sap/ZMM_CDS_PL_SUMMARY_CDS/zmm_cds_pl_summary"
-      + "(p_bukrs='" + B + "',p_year='" + Y + "',p_versn='" + V + "',p_date=" + isoToOdata(D) + ")"
-      + "/Set?$format=json";
+    var url =
+      "/sap/opu/odata/sap/ZMM_CDS_PL_SUMMARY_CDS/zmm_cds_pl_summary" +
+      "(p_bukrs='" +
+      B +
+      "',p_year='" +
+      Y +
+      "',p_versn='" +
+      V +
+      "',p_date=" +
+      isoToOdata(D) +
+      ")" +
+      "/Set?$format=json";
 
     var maxRetries = 5;
     var retryDelay = 10000;
@@ -784,28 +1048,44 @@
     for (var attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         if (attempt > 1) {
-          if (el) el.innerHTML = '<div class="loading-wrap">'
-            + '<div class="loading-spinner"></div>'
-            + '<div class="loading-text">Retrying\u2026 attempt ' + attempt + ' of ' + maxRetries + '</div>'
-            + '</div>';
-          await new Promise(function(resolve) { setTimeout(resolve, retryDelay); });
+          if (el)
+            el.innerHTML =
+              '<div class="loading-wrap">' +
+              '<div class="loading-spinner"></div>' +
+              '<div class="loading-text">Retrying\u2026 attempt ' +
+              attempt +
+              " of " +
+              maxRetries +
+              "</div>" +
+              "</div>";
+          await new Promise(function (resolve) {
+            setTimeout(resolve, retryDelay);
+          });
         }
 
         var controller = new AbortController();
-        var timeoutId = setTimeout(function() { controller.abort(); }, 180000);
-        var res = await fetch(url, { credentials: "omit", headers: { Accept: "application/json" }, signal: controller.signal });
+        var timeoutId = setTimeout(function () {
+          controller.abort();
+        }, 180000);
+        var res = await fetch(url, {
+          credentials: "omit",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
         clearTimeout(timeoutId);
         if (!res.ok) throw new Error("HTTP " + res.status);
-        var j    = await res.json();
+        var j = await res.json();
         var rows = j.d && j.d.results ? j.d.results : [];
 
-        if (!hasData(rows[0])) { showNoAccess(); return; }
+        if (!hasData(rows[0])) {
+          showNoAccess();
+          return;
+        }
         renderDashboard(rows[0]);
         if (rows[0].company_name) {
           setBrand(rows[0].company_name);
         }
         return;
-
       } catch (e) {
         if (attempt === maxRetries) {
           if (el) el.innerHTML = "";
@@ -818,7 +1098,11 @@
 
   /* ── Events — UNCHANGED ── */
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && document.getElementById("login-screen").style.display !== "none") doLogin();
+    if (
+      e.key === "Enter" &&
+      document.getElementById("login-screen").style.display !== "none"
+    )
+      doLogin();
   });
 
   /* Selection screen: pre-fill the date field with today instead of dd-mm-yyyy */
@@ -848,11 +1132,13 @@
     initScreen();
   }
 
-  setInterval(function () { if (B && Y && V) loadPL(); }, 300000);
+  setInterval(function () {
+    if (B && Y && V) loadPL();
+  }, 300000);
 
-  window.doLogin      = doLogin;
+  window.doLogin = doLogin;
   window.changeParams = changeParams;
-  window.loadPL       = loadPL;
-  window.setUnit      = setUnit;
+  window.loadPL = loadPL;
+  window.setUnit = setUnit;
 })();
 //# sourceMappingURL=dashboard.js.map
