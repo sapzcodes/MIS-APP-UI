@@ -378,7 +378,7 @@
   function fmtCogmDiff(val) {
     var n = parseFloat(val);
     if (isNaN(n) || n === 0) return "";
-    var d = n - 100;
+    var d = 100 - n;
     return (
       ' <span class="cogm-diff" style="color:#d32f2f">(' +
       (d > 0 ? "+" : "") +
