@@ -381,7 +381,6 @@
     var d = 100 - n;
     return (
       ' <span class="cogm-diff" style="color:#d32f2f">(' +
-      (d > 0 ? "+" : "") +
       d.toFixed(2) +
       "%)</span>"
     );
