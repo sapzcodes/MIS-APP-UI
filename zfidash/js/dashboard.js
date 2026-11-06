@@ -177,6 +177,11 @@
    1. COGM % line now shows (COGM % - 100) in red brackets, e.g. "92.50% (-7.50%)".
       New helper fmtCogmDiff(). Hidden when cogm_pct is 0/empty so it never shows -100.00%.
       Reason: show at a glance how far COGM is from 100% of revenue. No CDS change. */
+  /* DASH v16 CHANGE LOG (6 Nov 2026):
+   1. Sales Order Qty / Value block added in the Production Order tile, third column, on the
+      "Till Previous Month" heading line. Two cards: Current Month and Till Previous Month (both
+      from FY start, 1 April). New CDS fields so_curr_qty/_value, so_prev_qty/_value (zmm_sales_ord
+      -> zmm_ord_count -> zmm_cds_pl_summary). Null fields show 0 via fmtNum / fmtAmt. */
 
   var B = "",
     Y = "",
@@ -809,6 +814,10 @@
       wipPV = fmtRs(fmtAmt(rA.wip_prev_value));
     var curMonth = monthLabel(D, 0);
     var prevMonth = monthLabel(D, -1);
+    var soCQ = fmtNum(rA.so_curr_qty),
+      soCV = fmtRs(fmtAmt(rA.so_curr_value));
+    var soPQ = fmtNum(rA.so_prev_qty),
+      soPV = fmtRs(fmtAmt(rA.so_prev_value));
 
     /* Production value per period + production qty for "For Date" only (new CDS field production_qty_today) */
     var pPrev = fmtRsVal(rA.production_prev),
@@ -845,10 +854,17 @@
         poCard("WIP Orders Qty / Value", wipC, wipCV) +
         poCard("Orders &gt; 7 Days Qty / Value", gt7C, gt7CV) +
         "</div>" +
-        poSubHdr("Till Previous Month - " + prevMonth, false) +
-        '<div class="prod-order-row">' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);column-gap:13px;padding:0 15px 12px">' +
+        '<div class="po-subhdr" style="grid-column:1/3;font-size:12px;font-weight:600;color:#1b3a52;margin:6px 0 4px">Till Previous Month - ' +
+        prevMonth +
+        "</div>" +
+        '<div class="po-subhdr" style="grid-column:3;font-size:12px;font-weight:600;color:#1b3a52;margin:6px 0 4px">Sales Order Qty / Value</div>' +
         poCard("Open Orders Qty / Value", openP, openPV) +
         poCard("WIP Orders Qty / Value", wipP, wipPV) +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+        poCard("Current Month - " + curMonth, soCQ, soCV) +
+        poCard("Till Previous Month - " + prevMonth, soPQ, soPV) +
+        "</div>" +
         "</div>",
       "tile--fill",
     );
