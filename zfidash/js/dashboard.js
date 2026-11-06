@@ -181,7 +181,9 @@
    1. Sales Order Qty / Value block added in the Production Order tile, third column, on the
       "Till Previous Month" heading line. Two cards: Current Month and Till Previous Month (both
       from FY start, 1 April). New CDS fields so_curr_qty/_value, so_prev_qty/_value (zmm_sales_ord
-      -> zmm_ord_count -> zmm_cds_pl_summary). Null fields show 0 via fmtNum / fmtAmt. */
+      -> zmm_ord_count -> zmm_cds_pl_summary). Null fields show 0 via fmtNum / fmtAmt. 
+      2. Sales Order block is shown only when the selected company code is 3000 (showSO in
+      renderDashboard()). Other companies get the original 2-card "Till Previous Month" row. */
 
   var B = "",
     Y = "",
@@ -818,6 +820,7 @@
       soCV = fmtRs(fmtAmt(rA.so_curr_value));
     var soPQ = fmtNum(rA.so_prev_qty),
       soPV = fmtRs(fmtAmt(rA.so_prev_value));
+    var showSO = B === "3000"; /* Sales Order block only for company 3000 */
 
     /* Production value per period + production qty for "For Date" only (new CDS field production_qty_today) */
     var pPrev = fmtRsVal(rA.production_prev),
@@ -854,18 +857,24 @@
         poCard("WIP Orders Qty / Value", wipC, wipCV) +
         poCard("Orders &gt; 7 Days Qty / Value", gt7C, gt7CV) +
         "</div>" +
-        '<div style="display:grid;grid-template-columns:repeat(3,1fr);column-gap:13px;padding:0 15px 12px">' +
-        '<div class="po-subhdr" style="grid-column:1/3;font-size:12px;font-weight:600;color:#1b3a52;margin:6px 0 4px">Till Previous Month - ' +
-        prevMonth +
-        "</div>" +
-        '<div class="po-subhdr" style="grid-column:3;font-size:12px;font-weight:600;color:#1b3a52;margin:6px 0 4px">Sales Order Qty / Value</div>' +
-        poCard("Open Orders Qty / Value", openP, openPV) +
-        poCard("WIP Orders Qty / Value", wipP, wipPV) +
-        '<div style="display:flex;flex-direction:column;gap:8px">' +
-        poCard("Current Month - " + curMonth, soCQ, soCV) +
-        poCard("Till Previous Month - " + prevMonth, soPQ, soPV) +
-        "</div>" +
-        "</div>",
+        (showSO
+          ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);column-gap:13px;padding:0 15px 12px">' +
+            '<div class="po-subhdr" style="grid-column:1/3;font-size:12px;font-weight:600;color:#1b3a52;margin:6px 0 4px">Till Previous Month - ' +
+            prevMonth +
+            "</div>" +
+            '<div class="po-subhdr" style="grid-column:3;font-size:12px;font-weight:600;color:#1b3a52;margin:6px 0 4px">Sales Order Qty / Value</div>' +
+            poCard("Open Orders Qty / Value", openP, openPV) +
+            poCard("WIP Orders Qty / Value", wipP, wipPV) +
+            '<div style="display:flex;flex-direction:column;gap:8px">' +
+            poCard("Current Month - " + curMonth, soCQ, soCV) +
+            poCard("Till Previous Month - " + prevMonth, soPQ, soPV) +
+            "</div>" +
+            "</div>"
+          : poSubHdr("Till Previous Month - " + prevMonth, false) +
+            '<div class="prod-order-row">' +
+            poCard("Open Orders Qty / Value", openP, openPV) +
+            poCard("WIP Orders Qty / Value", wipP, wipPV) +
+            "</div>"),
       "tile--fill",
     );
 

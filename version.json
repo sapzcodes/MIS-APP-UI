@@ -1,5 +1,5 @@
 {
-  "version": "6c57055d9928",
+  "version": "5519df54fcd7",
   "minApk": 4,
   "files": [
     {
@@ -89,8 +89,8 @@
     },
     {
       "path": "zfidash/js/dashboard.js",
-      "sha256": "53b52257de6aa4e2be83e8ae54b0e7342571fa65d481af0f3b88bb1dd9c2d704",
-      "size": 44382
+      "sha256": "5a1fae80ebd84bb2f9f60ab58d9e959a62a995f4256a1fbe78c9c908c7375a84",
+      "size": 44966
     }
   ]
 }
