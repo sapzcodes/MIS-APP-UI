@@ -858,14 +858,14 @@
         poCard("Orders &gt; 7 Days Qty / Value", gt7C, gt7CV) +
         "</div>" +
         (showSO
-          ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);column-gap:13px;padding:0 15px 12px">' +
-            '<div class="po-subhdr" style="grid-column:1/3;font-size:12px;font-weight:600;color:#1b3a52;margin:6px 0 4px">Till Previous Month - ' +
+          ? '<div class="po-so-grid">' +
+            '<div class="po-subhdr po-so-hdr-prev">Till Previous Month - ' +
             prevMonth +
             "</div>" +
-            '<div class="po-subhdr" style="grid-column:3;font-size:12px;font-weight:600;color:#1b3a52;margin:6px 0 4px">Sales Order Qty / Value</div>' +
             poCard("Open Orders Qty / Value", openP, openPV) +
             poCard("WIP Orders Qty / Value", wipP, wipPV) +
-            '<div style="display:flex;flex-direction:column;gap:8px">' +
+            '<div class="po-subhdr po-so-hdr-so">Sales Order Qty / Value</div>' +
+            '<div class="po-so-stack">' +
             poCard("Current Month - " + curMonth, soCQ, soCV) +
             poCard("Till Previous Month - " + prevMonth, soPQ, soPV) +
             "</div>" +
