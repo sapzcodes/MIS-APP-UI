@@ -491,12 +491,14 @@ sap.ui.define([], function () {
   }
 
   /* Brand-wise card: no scrolling, max 10 brands (largest YTD value first). The popup (brandMatrix) lists all brands. */
+  const BRAND_TOP = 10; // brands listed on the main tile; everything else is grouped as "Others"
+
   function renderBrands(d, fy, pi, u) {
     $("brandMeta").textContent =
       `${range(pi)} ${calYear(fy, pi)} · Qty in numbers · Value in ${u.name}`;
     const S = d.sales,
       pre = pi > 0;
-    const rows = d.brands
+    const all = d.brands
       .map((b) => {
         const t = brandTot(b, d, pi);
         return {
@@ -510,8 +512,21 @@ sap.ui.define([], function () {
         };
       })
       .filter((r) => r.tv != null)
-      .sort((a, b) => b.tv - a.tv)
-      .slice(0, 10); // main tile shows at most 10 brands
+      .sort((a, b) => b.tv - a.tv);
+    const rows = all.slice(0, BRAND_TOP),
+      rest = all.slice(BRAND_TOP);
+    if (rest.length) {
+      const add = (k) => rest.reduce((s, r) => s + (r[k] || 0), 0);
+      rows.push({
+        n: "Others",
+        pq: pre ? add("pq") : null,
+        pv: pre ? add("pv") : null,
+        cq: add("cq"),
+        cv: add("cv"),
+        tq: add("tq"),
+        tv: add("tv"),
+      });
+    }
     const grand = {
       n: "Grand Total",
       pq: pre ? sumArr(S.cq, 0, pi - 1) : null,
@@ -522,10 +537,10 @@ sap.ui.define([], function () {
       tv: sumArr(S.cv, 0, pi),
     };
     const cells = (r) =>
-      `<td>${nfIN(r.pq, 0)}</td><td>${money(r.pv)}</td><td>${nfIN(r.cq, 0)}</td><td>${money(r.cv)}</td><td>${nfIN(r.tq, 0)}</td><td>${money(r.tv)}</td>`;
+      `<td class="pre">${nfIN(r.pq, 0)}</td><td class="pre">${money(r.pv)}</td><td>${nfIN(r.cq, 0)}</td><td>${money(r.cv)}</td><td>${nfIN(r.tq, 0)}</td><td>${money(r.tv)}</td>`;
     $("brandTbl").innerHTML =
-      `<thead><tr><th rowspan="2" class="fc">Brand</th><th colspan="2" class="grp">${preHead(pi)}</th><th colspan="2" class="grp">${MONTHS[pi]}</th><th colspan="2" class="grp">Total</th></tr>` +
-      `<tr>${'<th class="grp">Qty</th><th>Value</th>'.repeat(3)}</tr></thead>` +
+      `<thead><tr><th rowspan="2" class="fc">Brand</th><th colspan="2" class="grp pre">${preHead(pi)}</th><th colspan="2" class="grp">${MONTHS[pi]}</th><th colspan="2" class="grp">Total</th></tr>` +
+      `<tr><th class="grp pre">Qty</th><th class="pre">Value</th>${'<th class="grp">Qty</th><th>Value</th>'.repeat(2)}</tr></thead>` +
       `<tbody>${rows.map((r) => `<tr><td>${r.n}</td>${cells(r)}</tr>`).join("")}</tbody>` +
       `<tfoot><tr class="total"><td>${grand.n}</td>${cells(grand)}</tr></tfoot>`;
   }

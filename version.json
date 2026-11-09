@@ -1,5 +1,5 @@
 {
-  "version": "5519df54fcd7",
+  "version": "6f0b3836008d",
   "minApk": 4,
   "files": [
     {
@@ -29,8 +29,8 @@
     },
     {
       "path": "css/style.css",
-      "sha256": "f5a274defb38d8d42576b577d6c213724b9130390c2d1a5cfff5d6646dd1af3f",
-      "size": 14409
+      "sha256": "97ac2d9387cb85b9a5ced584b10391e825b59056b57062c788e9b4787692c9d3",
+      "size": 14713
     },
     {
       "path": "favicon.png",
@@ -54,8 +54,8 @@
     },
     {
       "path": "js/mis.js",
-      "sha256": "7ded5e63d97201e72890538a483673a8bca66ca3c9c005bd519e18961bbcc7aa",
-      "size": 40590
+      "sha256": "1ba9cc2b72a035c7e371f6e21ded0311fed4a9acb8be114da2a63d4597b09079",
+      "size": 41100
     },
     {
       "path": "js/zfidash.js",
