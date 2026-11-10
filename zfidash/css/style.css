@@ -8,6 +8,15 @@
      ESC listener guarded with _escBound flag — registered only once.
    - All other rules unchanged from previous session. */
 
+/* DASH v17 CHANGE LOG (10 Nov 2026):
+   Reason: the Open / WIP "Till Previous Month" cards (company 3000) were stretched to the height of the
+   Sales Order stack beside them, and two new Sales Order tiles (TEXMO, Motors) were needed.
+   CSS only, new block at the very bottom of this file.
+   1. .po-so-grid > .prod-order-card: align-self start + padding 6/10/8, so the two cards keep their
+      natural (small) height instead of stretching.
+   2. New .dash-so-row: the TEXMO and Motors tiles side by side under the two columns
+      (one column on phones). Tiles are built by soGroupTile() in dashboard.js. */
+
 /* DASH v14 CHANGE LOG (1 Nov 2026, mobile fit):
    Reason: the dashboard must fit a phone screen perfectly. Desktop looks unchanged.
    CSS only, no JS / HTML change. Only the "Responsive" block at the bottom was replaced.
@@ -1279,5 +1288,28 @@ body {
   }
   .age-table {
     min-width: 460px;
+  }
+}
+
+/* v17 (10 Nov 2026) --------------------------------------------------------
+   1. Open / WIP "Till Previous Month" cards (company 3000): keep their natural
+      height instead of stretching to the Sales Order stack beside them.
+   2. TEXMO + Motors tiles: two tiles side by side under the two columns,
+      one column on phones. */
+.po-so-grid > .prod-order-card {
+  align-self: start;
+  padding: 6px 10px 8px;
+}
+.dash-so-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+@media (max-width: 700px) {
+  .dash-so-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 8px;
   }
 }

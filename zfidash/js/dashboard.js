@@ -184,6 +184,14 @@
       -> zmm_ord_count -> zmm_cds_pl_summary). Null fields show 0 via fmtNum / fmtAmt. 
       2. Sales Order block is shown only when the selected company code is 3000 (showSO in
       renderDashboard()). Other companies get the original 2-card "Till Previous Month" row. */
+  /* DASH v17 CHANGE LOG (10 Nov 2026):
+   1. Two new tiles under the two columns, company 3000 only: "TEXMO" (customer group 11) and
+      "Motors" (all other groups). Each has a Current Month card and a Till Previous Month card,
+      "qty / value", same logic as the Sales Order block (current month = SOCurrMonth*, till previous
+      month = SOPending* in zmm_sales_ord). Built by soGroupTile(); the popup works on them too.
+   2. New CDS fields read: so_curr_qty/_value and so_prev_qty/_value with suffix _texmo and _others
+      (zmm_sales_ord -> zmm_ord_count -> zmm_cds_pl_summary, active in the system).
+   3. The Open/WIP "Till Previous Month" cards were made smaller (CSS only, see dashboard.css v17). */
 
   var B = "",
     Y = "",
@@ -560,6 +568,24 @@
       ' 0 4px">' +
       text +
       "</div>"
+    );
+  }
+
+  /* Sales Order tile per customer group (TEXMO / Motors): same two cards as the Sales Order block,
+     Current Month + Till Previous Month, each "qty / value". Raw CDS values go in, formatting is done here. */
+  function soGroupTile(icon, title, curMonth, prevMonth, cq, cv, pq, pv) {
+    return outerTile(
+      icon,
+      title,
+      poSubHdr("Sales Order Qty / Value", true) +
+        '<div class="sub-row cols-2">' +
+        poCard("Current Month - " + curMonth, fmtNum(cq), fmtRs(fmtAmt(cv))) +
+        poCard(
+          "Till Previous Month - " + prevMonth,
+          fmtNum(pq),
+          fmtRs(fmtAmt(pv)),
+        ) +
+        "</div>",
     );
   }
 
@@ -946,6 +972,35 @@
       "tile--grow",
     );
 
+    /* TEXMO (customer group 11) and Motors (all other groups): two Sales Order tiles under the
+       two columns, company 3000 only like the Sales Order block above. */
+    var soRow = "";
+    if (showSO) {
+      soRow =
+        '<div class="dash-so-row">' +
+        soGroupTile(
+          IC.box,
+          "TEXMO",
+          curMonth,
+          prevMonth,
+          rA.so_curr_qty_texmo,
+          rA.so_curr_value_texmo,
+          rA.so_prev_qty_texmo,
+          rA.so_prev_value_texmo,
+        ) +
+        soGroupTile(
+          IC.factory,
+          "Motors",
+          curMonth,
+          prevMonth,
+          rA.so_curr_qty_others,
+          rA.so_curr_value_others,
+          rA.so_prev_qty_others,
+          rA.so_prev_value_others,
+        ) +
+        "</div>";
+    }
+
     el.innerHTML =
       '<div class="dash-two-col">' +
       '<div class="dash-col">' +
@@ -954,7 +1009,8 @@
       '<div class="dash-col">' +
       right +
       "</div>" +
-      "</div>";
+      "</div>" +
+      soRow;
 
     /* attachSubCardToggle removed — hover handled by CSS :hover rules in dashboard.css */
     attachTilePopup(el);
