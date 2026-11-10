@@ -1,5 +1,5 @@
 {
-  "version": "af68dbf066c0",
+  "version": "2d4340b9bbd4",
   "minApk": 4,
   "files": [
     {
@@ -79,8 +79,8 @@
     },
     {
       "path": "zfidash/css/style.css",
-      "sha256": "de437dcb10e7e672bad20b8b7debd0b194871b66e3dee4363ede340f94bbeec3",
-      "size": 30131
+      "sha256": "68aba79e3b93280ba5ff160eadf7f41a527fc04bb4080eaf7ba3547be97c3d4c",
+      "size": 32634
     },
     {
       "path": "zfidash/index.html",
@@ -89,8 +89,8 @@
     },
     {
       "path": "zfidash/js/dashboard.js",
-      "sha256": "9fd379215d31e6fa9789644667514c2894c82e7f146e9058137450b78bbab3c3",
-      "size": 46892
+      "sha256": "76b0eac2e8dd60e22f2a6e9cbcf394601c88fe9cec03cbf43f2dda59823d9be7",
+      "size": 47596
     }
   ]
 }

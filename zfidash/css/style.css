@@ -14,8 +14,18 @@
    CSS only, new block at the very bottom of this file.
    1. .po-so-grid > .prod-order-card: align-self start + padding 6/10/8, so the two cards keep their
       natural (small) height instead of stretching.
-   2. New .dash-so-row: the TEXMO and Motors tiles side by side under the two columns
-      (one column on phones). Tiles are built by soGroupTile() in dashboard.js. */
+   2. (.dash-so-row, a separate TEXMO / Motors tile row, was added here first and removed again in v18.) */
+
+/* DASH v18 CHANGE LOG (10 Nov 2026, later):
+   Reason: TEXMO / Motors belong inside the Production Order tile, not in separate tiles.
+   CSS: new block at the very bottom of this file.
+   1. .po-so-grid gets a third row (rows: auto auto 1fr). The two split cards (.so-split-card, built by
+      soSplitCard() in dashboard.js) sit in row 3 under the Open / WIP cards: .po-so-split-cur column 1,
+      .po-so-split-prev column 2. The Sales Order stack (column 3) spans rows 2-3, its two cards share
+      the height, so all bottoms line up.
+   2. Split card = period title + two rows (.so-split-row): name left (.so-split-name 11px), "qty / value"
+      right (.so-split-val 13px bold, no wrap). Popup copy 12px / 16px.
+   3. Phones: one column, split cards keep the stacked layout (title on top, two rows below). */
 
 /* DASH v14 CHANGE LOG (1 Nov 2026, mobile fit):
    Reason: the dashboard must fit a phone screen perfectly. Desktop looks unchanged.
@@ -1300,16 +1310,86 @@ body {
   align-self: start;
   padding: 6px 10px 8px;
 }
-.dash-so-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 10px;
-  margin-top: 10px;
+
+/* v18 (10 Nov 2026, later) -------------------------------------------------
+   TEXMO / Motors split cards inside the Production Order tile (company 3000).
+   Grid (desktop): row 1 headings, row 2 Open / WIP cards (+ Sales Order stack),
+   row 3 the two split cards under Open / WIP. The stack spans rows 2-3 so the
+   bottoms of the split cards and the stack line up. Row 3 takes the free height. */
+.po-so-grid {
+  grid-template-rows: auto auto 1fr;
 }
+.po-so-grid > .po-so-split-cur {
+  grid-column: 1;
+  grid-row: 3;
+}
+.po-so-grid > .po-so-split-prev {
+  grid-column: 2;
+  grid-row: 3;
+}
+.po-so-grid > .po-so-stack {
+  grid-row: 2 / span 2;
+}
+.po-so-stack > .prod-order-card {
+  flex: 1; /* the two total cards share the taller stack evenly */
+}
+.po-so-grid > .so-split-card {
+  align-self: stretch;
+  margin-top: 8px;
+  padding: 6px 10px 8px;
+}
+.so-split-card .prod-order-label {
+  text-align: center;
+  margin-bottom: 3px;
+}
+.so-split-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+  border-top: 1px solid #f0f2f4;
+}
+.so-split-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6a7a8a;
+  white-space: nowrap;
+}
+.so-split-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1b3a52;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+/* popup copy: a bit larger, like the other popup cards */
+.tile-popup-body .so-split-name {
+  font-size: 12px;
+}
+.tile-popup-body .so-split-val {
+  font-size: 16px;
+}
+
+/* Phones: one column, split cards keep their stacked layout (title on top, two rows) */
 @media (max-width: 700px) {
-  .dash-so-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-    margin-top: 8px;
+  .po-so-grid {
+    grid-template-rows: none;
+  }
+  .po-so-grid > .so-split-card {
+    margin-top: 0;
+  }
+  .so-split-card,
+  .tile--fill .so-split-card {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 0;
+  }
+  .so-split-card .prod-order-label {
+    font-size: 12px;
+    margin-bottom: 3px;
   }
 }
