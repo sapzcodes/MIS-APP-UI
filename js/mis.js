@@ -2,6 +2,24 @@
    Login: none here. The Android shell adds the SAP login and sap-client to every /sap/* call.
    Mounted by controller/App.controller.js into <div id="misRoot">.
 
+   CHANGE LOG (16 Nov 2026):
+   1. Payables, Advance (creditors) and Receivables are now ONE tile "Payables & Receivables" (same layout as the
+      P&L dashboard tile: rows Payable / Advance / Receivable, columns Total, 0 to 60 days, >60 to <120, >120).
+      Only the Receivable row is clickable (popup). Advance data comes from ZI_MIS_VendAgeBase (where-filter removed).
+      0 to 60 = Total minus (>60 to <120) minus (>120), so receivables advance/PDC (bucket B6) lands in "0 to 60",
+      exactly like the P&L dashboard.
+   2. Receivables popup now lists one line per CUSTOMER GROUP (ZI_MIS_DebtorsAgeing sums per group; the OData field is
+      still called Party). Rows sorted by total, largest first.
+   3. Sales Value, Sales Qty and YTD Sales Value tiles all open "Month-wise Sales . FY Comparison" (ytdModal).
+      The old brand-split popup (brandMonth) was removed.
+   4. Brand-wise Sales tile on the main screen shows only the brands flagged MainBrand (= listed in ZMIS_BRAND_CFG),
+      all other brands grouped as "Others". The popup (brandMatrix) still lists every brand.
+      If no brand is flagged (table empty) the tile falls back to listing all brands.
+   5. Ageing bucket headings corrected to what the table function really produces:
+      B1 0-30 (incl. not due), B2 31-60, B3 61-90, B4 91-120, B5 above 120, B6 Adv / PDC.
+   NOT DONE YET: Sales Value = P&L revenue (zmm_cds_pl_summary-total_sales_ason). Needs the P&L financial statement
+      version (p_versn) the dashboard uses; the tiles still show billing net value until then.
+
    CHANGE LOG (4 Nov 2026, later):
    1. Header: the "Monthly Report" label is now "MIS Report", no company code anywhere in the header.
       The two header texts swap style and position: the company name now sits in the big heading (#title),
@@ -47,7 +65,7 @@ sap.ui.define([], function () {
       debtors: "ZC_MIS_DebtorsAgeing",
       creditors: "ZC_MIS_CreditorsAgeing",
     },
-    // period = fiscal period number (1 = Apr ... 12 = Mar); bucket = B1...B5 (0-30 ... Above 90), debtors also B6 (advance + PDC)
+    // period = fiscal period number (1 = Apr ... 12 = Mar); bucket = B1...B5 (0-30 ... Above 120), debtors also B6 (advance + PDC)
     FIELDS: {
       companies: { code: "CompanyCode", name: "CompanyName" },
       sales: {
@@ -62,6 +80,7 @@ sap.ui.define([], function () {
         fy: "FiscalYear",
         period: "Period",
         brand: "Brand",
+        main: "MainBrand", // 'X' = brand is listed in ZMIS_BRAND_CFG
         qty: "Qty",
         value: "Value",
       },
@@ -78,6 +97,7 @@ sap.ui.define([], function () {
         label: "Category",
         value: "Amount",
       },
+      // Party now carries the CUSTOMER GROUP text (ZI_MIS_DebtorsAgeing sums per customer group)
       debtors: {
         co: "CompanyCode",
         fy: "FiscalYear",
@@ -128,7 +148,7 @@ sap.ui.define([], function () {
     "February",
     "March",
   ];
-  const BUCKETS = ["0–30", "31–45", "46–60", "61–90", "Above 90"];
+  const BUCKETS = ["0–30", "31–60", "61–90", "91–120", "Above 120"]; // B1 incl. not due
   const ADV = "Adv / PDC"; // 6th debtors bucket (B6): advances + post-dated cheques, shown as credit (negative)
 
   /* Heading list for an ageing table: 6th column only when the data has 6 buckets */
@@ -261,13 +281,15 @@ sap.ui.define([], function () {
       [pq, pv] = salesArr(prevFy);
 
     const monthly = (rows, f, keyOf, withQty) => {
-      // group by key -> 12-month arrays
+      // group by key -> 12-month arrays; o.main = true when any row of the key has f.main = 'X'
       const m = new Map();
       rows.forEach((r) => {
         const k = keyOf(r);
-        if (!m.has(k)) m.set(k, { n: k, q: nulls(12), v: nulls(12) });
+        if (!m.has(k))
+          m.set(k, { n: k, q: nulls(12), v: nulls(12), main: false });
         const o = m.get(k),
           i = +r[f.period] - 1;
+        if (f.main && r[f.main] === "X") o.main = true;
         if (withQty) o.q[i] = (o.q[i] || 0) + (+r[f.qty] || 0);
         o.v[i] = (o.v[i] || 0) + +r[f.value] / D;
       });
@@ -342,6 +364,13 @@ sap.ui.define([], function () {
         });
   const money = (n) =>
     n == null ? "–" : "₹\u00a0" + nfIN(n * unitInfo().f, unitInfo().dp);
+  /* liability shown with a leading minus, like the P&L dashboard: "- ₹ 47,68,95,494" */
+  const moneyNeg = (n) =>
+    n == null
+      ? "–"
+      : (n > 0 ? "-\u00a0" : "") +
+        "₹\u00a0" +
+        nfIN(Math.abs(n) * unitInfo().f, unitInfo().dp);
   const calYear = (fy, i) => (i < 9 ? +fy.slice(0, 4) : +fy.slice(5));
   const mLabel = (fy, i) => `${MONTHS[i]}-${String(calYear(fy, i)).slice(2)}`;
   const range = (i) => (i === 0 ? "Apr" : `Apr–${MONTHS[i]}`);
@@ -377,9 +406,10 @@ sap.ui.define([], function () {
    ===================================================================== */
   let STATE = null;
 
-  function ageTable(rows, total, firstHead, extra = "") {
+  /* Ageing table for the receivables popup (customer groups x buckets) */
+  function ageTable(rows, total, firstHead) {
     const H = ageHead(total.b.length);
-    const cell = (x, i, bold) =>
+    const cell = (x, i) =>
       `<td class="${i === 4 && x ? "down" : ""}">${x == null ? "–" : money(x)}</td>`;
     return (
       `<tr><th>${firstHead}</th>${H.map((b) => `<th>${b}</th>`).join("")}<th>Total</th></tr>` +
@@ -393,12 +423,51 @@ sap.ui.define([], function () {
     );
   }
 
-  function ageTile(title, rows, act) {
-    const H = ageHead(rows[0].b.length);
-    return `<div class="card kpi${act ? " click" : ""}"${act ? ` data-act="${act}"` : ""}><div class="lbl">${title}</div>
-    <div class="scroll"><table class="mini">
-      <tr><th></th>${H.map((b) => `<th>${b}</th>`).join("")}<th>Total</th></tr>
-      ${rows.map((r) => `<tr><td>${r.label}</td>${r.b.map((x, i) => `<td class="${i === 4 && x ? "down" : ""}">${x == null ? "–" : money(x)}</td>`).join("")}<td><b>${money(r.t)}</b></td></tr>`).join("")}
+  /* One tile: Payable / Advance (creditors) / Receivable x Total, 0 to 60, >60 to <120, >120.
+     0 to 60 = total - mid - high, so the receivables Adv / PDC bucket (B6) falls into it (same as the P&L dashboard).
+     Only the Receivable row is clickable. */
+  function parTile(d, u) {
+    const split = (b, t) => {
+      const a = (i) => b[i] || 0,
+        hi = a(4),
+        mid = a(2) + a(3);
+      return { t, low: t - mid - hi, mid, hi };
+    };
+    const rows = [
+      {
+        label: "Payable",
+        cls: "up",
+        fmt: moneyNeg,
+        ...split(d.creditors.cr.b, d.creditors.cr.t),
+      },
+      {
+        label: "Advance",
+        cls: "up",
+        fmt: money,
+        ...split(d.creditors.adv.b, d.creditors.adv.t),
+      },
+      {
+        label: "Receivable",
+        cls: "down",
+        fmt: money,
+        act: "debtors",
+        ...split(d.debtors.total.b, d.debtors.total.t),
+      },
+    ];
+    return `<div class="card kpi"><h2>Payables &amp; Receivables</h2>
+    <div class="meta">As on today · Value in ${u.name} · tap Receivable for customer group breakup</div>
+    <div class="scroll"><table class="mini par">
+      <tr><th></th><th>Total</th><th>0 to 60 days</th><th>&gt;60 to &lt;120</th><th>&gt;120</th></tr>
+      ${rows
+        .map(
+          (r) =>
+            `<tr class="${r.act ? "rowclick" : ""}"${r.act ? ` data-act="${r.act}"` : ""}><td>${r.label}</td>` +
+            [r.t, r.low, r.mid, r.hi]
+              .map((x) => `<td class="${r.cls}"><b>${r.fmt(x)}</b></td>`)
+              .join("") +
+            `</tr>`,
+        )
+        .join("")}
     </table></div></div>`;
   }
 
@@ -420,6 +489,7 @@ sap.ui.define([], function () {
     $("title").textContent = d.name || co;
     $("crumb").textContent = `MIS Report · ${FULL[pi]} ${cyr}`;
 
+    /* all three sales tiles open Month-wise Sales . FY Comparison (ACTIONS maps them to ytdModal) */
     $("kpis").innerHTML = `
     <div class="card kpi click" data-act="salesValue"><div class="lbl">Sales Value · ${lbl}</div>
       <div class="val">${money(cv)}<small>${u.label}</small></div>
@@ -431,14 +501,7 @@ sap.ui.define([], function () {
       <div class="val">${money(ytdC)}<small>${u.label}</small></div>
       ${delta(ytdC, ytdP, `${range(pi)} ${String(cyr - 1).slice(2)}`, money)}</div>`;
 
-    $("debTile").innerHTML = ageTile(
-      "Receivables · Ageing",
-      [{ label: "Receivables", ...d.debtors.total }],
-      "debtors",
-    );
-    $("creTile").innerHTML = ageTile("Payables · Ageing", [
-      { label: "Payables", ...d.creditors.cr },
-    ]);
+    $("parTile").innerHTML = parTile(d, u);
 
     renderChart(fy, pi, d, u);
     renderBrands(d, fy, pi, u);
@@ -490,9 +553,9 @@ sap.ui.define([], function () {
     $("chart").innerHTML = s + "</svg>";
   }
 
-  /* Brand-wise card: no scrolling, max 10 brands (largest YTD value first). The popup (brandMatrix) lists all brands. */
-  const BRAND_TOP = 10; // brands listed on the main tile; everything else is grouped as "Others"
-
+  /* Brand-wise card: only brands listed in ZMIS_BRAND_CFG (MainBrand = 'X') are shown, largest YTD value first;
+     every other brand is grouped as "Others". The popup (brandMatrix) lists all brands.
+     Fallback: if no brand is flagged at all (config table empty) every brand is listed. */
   function renderBrands(d, fy, pi, u) {
     $("brandMeta").textContent =
       `${range(pi)} ${calYear(fy, pi)} · Qty in numbers · Value in ${u.name}`;
@@ -503,6 +566,7 @@ sap.ui.define([], function () {
         const t = brandTot(b, d, pi);
         return {
           n: b.n,
+          main: b.main,
           pq: pre ? sumArr(b.q, 0, pi - 1) : null,
           pv: pre ? sumArr(b.v, 0, pi - 1) : null,
           cq: b.q[pi],
@@ -513,8 +577,9 @@ sap.ui.define([], function () {
       })
       .filter((r) => r.tv != null)
       .sort((a, b) => b.tv - a.tv);
-    const rows = all.slice(0, BRAND_TOP),
-      rest = all.slice(BRAND_TOP);
+    const anyMain = all.some((r) => r.main);
+    const rows = anyMain ? all.filter((r) => r.main) : all.slice(),
+      rest = anyMain ? all.filter((r) => !r.main) : [];
     if (rest.length) {
       const add = (k) => rest.reduce((s, r) => s + (r[k] || 0), 0);
       rows.push({
@@ -573,31 +638,7 @@ sap.ui.define([], function () {
     $("modal").classList.remove("open");
   }
 
-  /* Sales Value / Sales Qty tile -> brand split of the selected month */
-  function brandMonth(kind) {
-    const { d, fy, pi } = STATE,
-      u = unitInfo(),
-      S = d.sales,
-      isV = kind === "value";
-    const key = isV ? "v" : "q",
-      tot = isV ? S.cv[pi] : S.cq[pi];
-    const rows = d.brands.filter((b) => b[key][pi] != null);
-    const fmt = isV ? money : (x) => nfIN(x, 0);
-    openModal(
-      `${isV ? "Sales Value" : "Sales Qty"} · ${mLabel(fy, pi)} · Brand-wise`,
-      isV ? `Value in ${u.name}` : "Qty in numbers",
-      `<table><tr><th>Brand</th><th>${isV ? "Value" : "Qty"}</th><th>Share</th></tr>` +
-        rows
-          .map(
-            (b) =>
-              `<tr><td>${b.n}</td><td>${fmt(b[key][pi])}</td><td>${((b[key][pi] / tot) * 100).toFixed(1)}%</td></tr>`,
-          )
-          .join("") +
-        `<tr class="total"><td>Grand Total</td><td>${fmt(tot)}</td><td>100%</td></tr></table>`,
-    );
-  }
-
-  /* YTD tile -> Month-wise Sales · FY Comparison (months are the column headings) */
+  /* Sales Value, Sales Qty and YTD tiles -> Month-wise Sales · FY Comparison (months are the column headings) */
   function ytdModal() {
     const { d, fy, pi } = STATE,
       u = unitInfo(),
@@ -642,7 +683,7 @@ sap.ui.define([], function () {
     );
   }
 
-  /* Brand-wise card -> month matrix with Qty + Value per month */
+  /* Brand-wise card -> month matrix with Qty + Value per month (ALL brands) */
   function brandMatrix() {
     const { d, fy, pi } = STATE,
       u = unitInfo(),
@@ -659,7 +700,7 @@ sap.ui.define([], function () {
     });
     h += `<tr class="total"><td>Grand Total</td>${idx.map((i) => pair(S.cq[i], S.cv[i])).join("")}${pair(sumArr(S.cq, 0, pi), sumArr(S.cv, 0, pi))}</tr>`;
     if (d.returns)
-      h += `<tr class="memo"><td>Sales Return</td>${idx.map((i) => pair(null, d.returns[i])).join("")}${pair(null, sumArr(d.returns, 0, pi))}</tr>`;
+      h += `<tr class="memo"><td>Sales Return (memo, not deducted)</td>${idx.map((i) => pair(null, d.returns[i])).join("")}${pair(null, sumArr(d.returns, 0, pi))}</tr>`;
     openModal(
       `Brand-wise Sales`,
       `${range(pi)} · Qty in numbers · Value in ${u.name}`,
@@ -690,14 +731,15 @@ sap.ui.define([], function () {
     openModal("Purchase & Expenses", `${range(pi)} · Value in ${u.name}`, h);
   }
 
-  /* Sundry Debtors tile -> Debtors Ageing by party */
+  /* Receivable row -> Receivables ageing by CUSTOMER GROUP (one line per group, largest first) */
   function debtorsModal() {
     const { d } = STATE,
       u = unitInfo();
+    const rows = [...d.debtors.rows].sort((a, b) => (b.t || 0) - (a.t || 0));
     openModal(
-      "Receivables",
-      `Receivables · Value in ${u.name}`,
-      `<table class="dense">${ageTable(d.debtors.rows, d.debtors.total, "Party")}</table>`,
+      "Receivables · by Customer Group",
+      `Open items as on today · Value in ${u.name}`,
+      `<table class="dense">${ageTable(rows, d.debtors.total, "Customer Group")}</table>`,
     );
   }
 
@@ -834,8 +876,8 @@ sap.ui.define([], function () {
    7. WIRING
    ===================================================================== */
   const ACTIONS = {
-    salesValue: () => brandMonth("value"),
-    salesQty: () => brandMonth("qty"),
+    salesValue: ytdModal, // all three sales tiles -> Month-wise Sales · FY Comparison
+    salesQty: ytdModal,
     ytd: ytdModal,
     brandMatrix,
     expMonthly,
@@ -1064,8 +1106,7 @@ sap.ui.define([], function () {
           <span><i style="background:var(--curbar)"></i><span id="lgCur"></span></span>
         </div>
       </div>
-      <div id="debTile"></div>
-      <div id="creTile"></div>
+      <div id="parTile"></div>
     </div>
     <div class="stack">
       <div class="card click" data-act="brandMatrix" title="Click for month-wise breakup">

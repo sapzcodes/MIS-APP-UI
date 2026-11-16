@@ -815,3 +815,40 @@
     max-width: 96px;
   }
 }
+
+/* ---- 16 Nov 2026: combined "Payables & Receivables" tile ----
+   APPEND this block at the END of the existing MIS stylesheet. Nothing existing was changed or removed.
+   WHY: the three separate ageing tiles became one tile (rows Payable / Advance / Receivable);
+   only the Receivable row is clickable, so it needs its own row hover + chevron. */
+.mis .par th {
+  white-space: nowrap;
+}
+.mis .par td:first-child {
+  font-weight: 600;
+  color: #1f3a5f;
+}
+.mis .par td {
+  font-size: 14px;
+}
+.mis .par tr.rowclick {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mis .par tr.rowclick:hover {
+  background: #f3f7fd;
+}
+.mis .par tr.rowclick td:last-child::after {
+  content: " ›";
+  color: #9aa4b2;
+  font-weight: 400;
+}
+/* phone: the 4 value columns scroll inside the card instead of squeezing */
+@media (max-width: 700px) {
+  .mis .par {
+    font-size: 12.5px;
+  }
+  .mis .par td,
+  .mis .par th {
+    padding: 8px 5px;
+  }
+}
