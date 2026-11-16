@@ -2,6 +2,19 @@
    Login: none here. The Android shell adds the SAP login and sap-client to every /sap/* call.
    Mounted by controller/App.controller.js into <div id="misRoot">.
 
+   CHANGE LOG (16 Nov 2026, later):
+   1. Sales are now NET of sales returns everywhere on the main screen (Sales Value, Sales Qty and YTD tiles, the
+      monthly chart, the Brand-wise tile), so they tie to the P&L (zmm_cds_pl_summary total_sales_*).
+      Reason: the CDS views ZI_MIS_SalesMonth / ZI_MIS_BrandSales now return Qty / Value = sales minus returns
+      (company 1000, FY 2026-27 till 16.11.2026: net 2,05,78,41,613 = P&L; gross was 5,91,758 higher).
+   2. Sales returns are shown separately ONLY in the popups, from the new fields ReturnQty / ReturnValue:
+      - Month-wise Sales . FY Comparison (ytdModal): extra "Sales return" blocks for qty and value (both FYs).
+      - Brand-wise Sales popup (brandMatrix): rows Gross Sales, Less: Sales Return, Net Sales (Grand Total).
+        The brand rows themselves are net of returns, so they add up to Net Sales.
+   3. ZC_MIS_SalesReturn is no longer read (the returns come with the sales rows), so the separate fetch, the
+      "returns" entity / field config and the old "Sales Return (memo, not deducted)" row are removed.
+   Sales Value = P&L revenue is now DONE (FS version PEPL is hard-coded in the CDS ZI_MIS_SalesGL).
+
    CHANGE LOG (16 Nov 2026):
    1. Payables, Advance (creditors) and Receivables are now ONE tile "Payables & Receivables" (same layout as the
       P&L dashboard tile: rows Payable / Advance / Receivable, columns Total, 0 to 60 days, >60 to <120, >120).
@@ -17,8 +30,6 @@
       If no brand is flagged (table empty) the tile falls back to listing all brands.
    5. Ageing bucket headings corrected to what the table function really produces:
       B1 0-30 (incl. not due), B2 31-60, B3 61-90, B4 91-120, B5 above 120, B6 Adv / PDC.
-   NOT DONE YET: Sales Value = P&L revenue (zmm_cds_pl_summary-total_sales_ason). Needs the P&L financial statement
-      version (p_versn) the dashboard uses; the tiles still show billing net value until then.
 
    CHANGE LOG (4 Nov 2026, later):
    1. Header: the "Monthly Report" label is now "MIS Report", no company code anywhere in the header.
@@ -60,7 +71,6 @@ sap.ui.define([], function () {
       companies: "ZC_MIS_Dashboard", // root entity: CompanyCode, CompanyName (check $metadata if a call returns 404)
       sales: "ZC_MIS_SalesMonth", // V4 entity set = exposed CDS view name
       brands: "ZC_MIS_BrandSales",
-      returns: "ZC_MIS_SalesReturn",
       expenses: "ZC_MIS_PurchaseExpense",
       debtors: "ZC_MIS_DebtorsAgeing",
       creditors: "ZC_MIS_CreditorsAgeing",
@@ -68,12 +78,15 @@ sap.ui.define([], function () {
     // period = fiscal period number (1 = Apr ... 12 = Mar); bucket = B1...B5 (0-30 ... Above 120), debtors also B6 (advance + PDC)
     FIELDS: {
       companies: { code: "CompanyCode", name: "CompanyName" },
+      // Qty / Value are NET of sales returns; retQty / retValue are the returns on their own (popups only)
       sales: {
         co: "CompanyCode",
         fy: "FiscalYear",
         period: "Period",
         qty: "Qty",
         value: "Value",
+        retQty: "ReturnQty",
+        retValue: "ReturnValue",
       },
       brands: {
         co: "CompanyCode",
@@ -82,12 +95,6 @@ sap.ui.define([], function () {
         brand: "Brand",
         main: "MainBrand", // 'X' = brand is listed in ZMIS_BRAND_CFG
         qty: "Qty",
-        value: "Value",
-      },
-      returns: {
-        co: "CompanyCode",
-        fy: "FiscalYear",
-        period: "Period",
         value: "Value",
       },
       expenses: {
@@ -164,6 +171,9 @@ sap.ui.define([], function () {
       }
     return any ? s : null;
   };
+
+  /* a + b, null only when both are null (gross = net + returns) */
+  const addN = (a, b) => (a == null && b == null ? null : (a || 0) + (b || 0));
 
   /* Fills derived totals */
   function finish(d, name) {
@@ -249,36 +259,39 @@ sap.ui.define([], function () {
 
   async function odataData(co, fy) {
     const F = CONFIG.FIELDS,
-      D = CONFIG.VALUE_DIVISOR,
-      E = CONFIG.ENTITIES;
+      D = CONFIG.VALUE_DIVISOR;
     const prevFy = `${+fy.slice(0, 4) - 1}-${+fy.slice(5) - 1}`;
     const one = (f) => `${f.co} eq '${co}' and ${f.fy} eq '${fy}'`;
     const coOnly = (f) => `${f.co} eq '${co}'`; // ageing = open items as on today, no fiscal year
     const two = (f) =>
       `${f.co} eq '${co}' and (${f.fy} eq '${fy}' or ${f.fy} eq '${prevFy}')`;
 
-    const [sR, bR, rR, eR, dR, cR] = await Promise.all([
+    const [sR, bR, eR, dR, cR] = await Promise.all([
       odataGet("sales", two(F.sales)),
       odataGet("brands", one(F.brands)),
-      E.returns ? odataGet("returns", one(F.returns)) : [],
       odataGet("expenses", one(F.expenses), "SortOrder"),
       odataGet("debtors", coOnly(F.debtors)),
       odataGet("creditors", coOnly(F.creditors)),
     ]);
 
     const nulls = (n) => Array(n).fill(null);
+    // q / v = net of returns, rq / rv = the returns alone (shown in popups only)
     const salesArr = (fyv) => {
       const q = nulls(12),
-        v = nulls(12);
+        v = nulls(12),
+        rq = nulls(12),
+        rv = nulls(12);
       sR.filter((r) => r[F.sales.fy] === fyv).forEach((r) => {
         const i = +r[F.sales.period] - 1;
         q[i] = +r[F.sales.qty];
         v[i] = +r[F.sales.value] / D;
+        rq[i] = +r[F.sales.retQty] || 0;
+        rv[i] = (+r[F.sales.retValue] || 0) / D;
       });
-      return [q, v];
+      return [q, v, rq, rv];
     };
-    const [cq, cv] = salesArr(fy),
-      [pq, pv] = salesArr(prevFy);
+    const [cq, cv, crq, crv] = salesArr(fy),
+      [pq, pv, prq, prv] = salesArr(prevFy);
 
     const monthly = (rows, f, keyOf, withQty) => {
       // group by key -> 12-month arrays; o.main = true when any row of the key has f.main = 'X'
@@ -311,9 +324,6 @@ sap.ui.define([], function () {
     const exp = monthly(eR, F.expenses, (r) => r[F.expenses.label], false).map(
       (x) => ({ n: x.n, v: x.v }),
     );
-    const ret = rR.length
-      ? monthly(rR, F.returns, () => "ret", false)[0].v
-      : null;
     const crRows = bucketed(cR, F.creditors, (r) => r[F.creditors.type]);
     const pick = (k) => crRows.find((x) => x.n === k) || { b: nulls(5) };
 
@@ -321,14 +331,12 @@ sap.ui.define([], function () {
       counts: {
         sales: sR.length,
         brands: bR.length,
-        returns: rR.length,
         expenses: eR.length,
         debtors: dR.length,
         creditors: cR.length,
       },
-      sales: { cq, cv, pq, pv },
+      sales: { cq, cv, pq, pv, crq, crv, prq, prv },
       brands,
-      returns: ret,
       purchase: { rows: exp },
       expNote: null,
       debtors: {
@@ -489,7 +497,8 @@ sap.ui.define([], function () {
     $("title").textContent = d.name || co;
     $("crumb").textContent = `MIS Report · ${FULL[pi]} ${cyr}`;
 
-    /* all three sales tiles open Month-wise Sales . FY Comparison (ACTIONS maps them to ytdModal) */
+    /* all three sales tiles open Month-wise Sales . FY Comparison (ACTIONS maps them to ytdModal).
+       Values are net of sales returns (= P&L sales); the returns alone are shown in the popups. */
     $("kpis").innerHTML = `
     <div class="card kpi click" data-act="salesValue"><div class="lbl">Sales Value · ${lbl}</div>
       <div class="val">${money(cv)}<small>${u.label}</small></div>
@@ -555,7 +564,8 @@ sap.ui.define([], function () {
 
   /* Brand-wise card: only brands listed in ZMIS_BRAND_CFG (MainBrand = 'X') are shown, largest YTD value first;
      every other brand is grouped as "Others". The popup (brandMatrix) lists all brands.
-     Fallback: if no brand is flagged at all (config table empty) every brand is listed. */
+     Fallback: if no brand is flagged at all (config table empty) every brand is listed.
+     Brand values and Grand Total are all net of sales returns, so the rows add up to the Grand Total. */
   function renderBrands(d, fy, pi, u) {
     $("brandMeta").textContent =
       `${range(pi)} ${calYear(fy, pi)} · Qty in numbers · Value in ${u.name}`;
@@ -638,7 +648,8 @@ sap.ui.define([], function () {
     $("modal").classList.remove("open");
   }
 
-  /* Sales Value, Sales Qty and YTD tiles -> Month-wise Sales · FY Comparison (months are the column headings) */
+  /* Sales Value, Sales Qty and YTD tiles -> Month-wise Sales · FY Comparison (months are the column headings).
+     The qty / value blocks are net of returns (same as the tiles); the returns are listed separately below each block. */
   function ytdModal() {
     const { d, fy, pi } = STATE,
       u = unitInfo(),
@@ -651,14 +662,31 @@ sap.ui.define([], function () {
       cq: i <= pi ? S.cq[i] : null,
       pv: S.pv[i],
       cv: i <= pi ? S.cv[i] : null,
+      prq: S.prq[i],
+      crq: i <= pi ? S.crq[i] : null,
+      prv: S.prv[i],
+      crv: i <= pi ? S.crv[i] : null,
     }));
     cols.push({
       pq: sumArr(S.pq, 0, pi),
       cq: sumArr(S.cq, 0, pi),
       pv: sumArr(S.pv, 0, pi),
       cv: sumArr(S.cv, 0, pi),
+      prq: sumArr(S.prq, 0, pi),
+      crq: sumArr(S.crq, 0, pi),
+      prv: sumArr(S.prv, 0, pi),
+      crv: sumArr(S.crv, 0, pi),
     }); // YTD
-    cols.push({ pq: sumArr(S.pq), cq: null, pv: sumArr(S.pv), cv: null }); // full prev year
+    cols.push({
+      pq: sumArr(S.pq),
+      cq: null,
+      pv: sumArr(S.pv),
+      cv: null,
+      prq: sumArr(S.prq),
+      crq: null,
+      prv: sumArr(S.prv),
+      crv: null,
+    }); // full prev year
     const heads = [...MONTHS, `YTD ${range(pi)}`, "Full year"];
     const cls = (i) => (i >= 12 ? ' class="ytdc"' : "");
     const row = (label, f) =>
@@ -667,23 +695,30 @@ sap.ui.define([], function () {
       `<tr class="grprow"><td colspan="${cols.length + 1}">${t}</td></tr>`;
     const h =
       `<table class="dense"><tr><th></th>${heads.map((t, i) => `<th${cls(i)}>${t}</th>`).join("")}</tr>` +
-      grp("Qty (numbers)") +
+      grp("Qty (numbers) · net of sales returns") +
       row(a, (c) => nfIN(c.pq, 0)) +
       row(b, (c) => nfIN(c.cq, 0)) +
       row("Change", (c) => chg(c.cq, c.pq)) +
-      grp(`Value (${u.name})`) +
+      grp("Sales return qty (already deducted above)") +
+      row(a, (c) => nfIN(c.prq, 0)) +
+      row(b, (c) => nfIN(c.crq, 0)) +
+      grp(`Value (${u.name}) · net of sales returns`) +
       row(a, (c) => money(c.pv)) +
       row(b, (c) => money(c.cv)) +
       row("Change", (c) => chg(c.cv, c.pv)) +
+      grp(`Sales return value (${u.name}, already deducted above)`) +
+      row(a, (c) => money(c.prv)) +
+      row(b, (c) => money(c.crv)) +
       "</table>";
     openModal(
       "Month-wise Sales · FY Comparison",
-      `Qty in numbers · Value in ${u.name}`,
+      `Qty in numbers · Value in ${u.name} · net of sales returns, returns listed separately`,
       h,
     );
   }
 
-  /* Brand-wise card -> month matrix with Qty + Value per month (ALL brands) */
+  /* Brand-wise card -> month matrix with Qty + Value per month (ALL brands).
+     Brand rows are net of returns; below them: Gross Sales, Less: Sales Return, Net Sales (= Grand Total on the tile). */
   function brandMatrix() {
     const { d, fy, pi } = STATE,
       u = unitInfo(),
@@ -691,6 +726,7 @@ sap.ui.define([], function () {
       idx = MONTHS.slice(0, pi + 1).map((_, i) => i);
     const pair = (q, v, bold) =>
       `<td>${q == null ? "" : nfIN(q, 0)}</td><td>${v == null ? "" : money(v)}</td>`;
+    const tot = (a) => sumArr(a, 0, pi);
     let h = `<table class="dense"><thead><tr><th rowspan="2">Brand</th>${idx.map((i) => `<th colspan="2" class="grp">${mLabel(fy, i)}</th>`).join("")}<th colspan="2" class="grp">Total</th></tr>
     <tr>${[...idx, "T"].map(() => '<th class="grp">Qty</th><th>Value</th>').join("")}</tr></thead><tbody>`;
     d.brands.forEach((b) => {
@@ -698,12 +734,12 @@ sap.ui.define([], function () {
       if (t.v == null) return;
       h += `<tr><td>${b.n}</td>${idx.map((i) => pair(b.q[i], b.v[i])).join("")}${pair(t.q, t.v)}</tr>`;
     });
-    h += `<tr class="total"><td>Grand Total</td>${idx.map((i) => pair(S.cq[i], S.cv[i])).join("")}${pair(sumArr(S.cq, 0, pi), sumArr(S.cv, 0, pi))}</tr>`;
-    if (d.returns)
-      h += `<tr class="memo"><td>Sales Return (memo, not deducted)</td>${idx.map((i) => pair(null, d.returns[i])).join("")}${pair(null, sumArr(d.returns, 0, pi))}</tr>`;
+    h += `<tr class="memo"><td>Gross Sales</td>${idx.map((i) => pair(addN(S.cq[i], S.crq[i]), addN(S.cv[i], S.crv[i]))).join("")}${pair(addN(tot(S.cq), tot(S.crq)), addN(tot(S.cv), tot(S.crv)))}</tr>`;
+    h += `<tr class="memo"><td>Less: Sales Return</td>${idx.map((i) => pair(S.crq[i], S.crv[i])).join("")}${pair(tot(S.crq), tot(S.crv))}</tr>`;
+    h += `<tr class="total"><td>Net Sales (Grand Total)</td>${idx.map((i) => pair(S.cq[i], S.cv[i])).join("")}${pair(tot(S.cq), tot(S.cv))}</tr>`;
     openModal(
       `Brand-wise Sales`,
-      `${range(pi)} · Qty in numbers · Value in ${u.name}`,
+      `${range(pi)} · Qty in numbers · Value in ${u.name} · brand rows are net of sales returns`,
       h + "</tbody></table>",
     );
   }
