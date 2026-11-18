@@ -56,7 +56,14 @@
       new company needs no UI change. The first returned company is selected by default.
    2. Header restyled to match the P&L dashboard (black bar, red title, light-on-dark controls).
       The unit dropdown became a segmented control (#unitSeg) that drives the hidden #unit select,
-      so unitInfo() and the Excel export are unchanged. Styling is in the header block of the CSS. */
+      so unitInfo() and the Excel export are unchanged. Styling is in the header block of the CSS.
+      
+         CHANGE LOG (18 Nov 2026):
+   1. Month and year now always default to the CURRENT month (and current FY), not the last completed month.
+      Reason: the report is used during the month, so it should open on the running month.
+      Done in fillPeriods(): default index = (month + 9) % 12. FY already defaulted to FY_LIST[0] = current FY.
+      Switching the FY dropdown still keeps the selected month (keepIdx), unchanged.*/
+
 sap.ui.define([], function () {
   "use strict";
 
@@ -965,8 +972,7 @@ sap.ui.define([], function () {
     const fy = $("fy").value,
       y0 = +fy.slice(0, 4),
       y1 = +fy.slice(5);
-    const def =
-      keepIdx != null ? keepIdx : Math.max(0, ((_now.getMonth() + 9) % 12) - 1); // last completed month
+    const def = keepIdx != null ? keepIdx : (_now.getMonth() + 9) % 12; // current month (fiscal index: Apr = 0 ... Mar = 11)
     $("period").innerHTML = MONTHS.map(
       (m, i) =>
         `<option value="${i}" ${i === def ? "selected" : ""}>${m} ${i < 9 ? y0 : y1}</option>`,
