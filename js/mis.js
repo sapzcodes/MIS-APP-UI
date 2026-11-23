@@ -62,7 +62,13 @@
    1. Month and year now always default to the CURRENT month (and current FY), not the last completed month.
       Reason: the report is used during the month, so it should open on the running month.
       Done in fillPeriods(): default index = (month + 9) % 12. FY already defaulted to FY_LIST[0] = current FY.
-      Switching the FY dropdown still keeps the selected month (keepIdx), unchanged.*/
+      Switching the FY dropdown still keeps the selected month (keepIdx), unchanged.
+      
+         CHANGE LOG (23 Nov 2026):
+   1. Brand-wise tile and Brand-wise popup are now sorted by SortOrder (from ZMIS_BRAND_CFG-SORT_ORDER via
+      ZC_MIS_BrandSales), not by value. Reason: the customer's PDF has a fixed brand sequence
+      (Crompton, Dharani, Grundfos, Paranaa, Kirloskar, SFL, then Spares/Services).
+      Spares/Services = 9000, unlisted brands = 9999 (set in ZI_MIS_SalesBase). Tie-break: value on the tile, name in the popup.*/
 
 sap.ui.define([], function () {
   "use strict";
@@ -103,6 +109,7 @@ sap.ui.define([], function () {
         main: "MainBrand", // 'X' = brand is listed in ZMIS_BRAND_CFG
         qty: "Qty",
         value: "Value",
+        sort: "SortOrder",
       },
       expenses: {
         co: "CompanyCode",
@@ -306,10 +313,17 @@ sap.ui.define([], function () {
       rows.forEach((r) => {
         const k = keyOf(r);
         if (!m.has(k))
-          m.set(k, { n: k, q: nulls(12), v: nulls(12), main: false });
+          m.set(k, {
+            n: k,
+            q: nulls(12),
+            v: nulls(12),
+            main: false,
+            sort: 9999,
+          });
         const o = m.get(k),
           i = +r[f.period] - 1;
         if (f.main && r[f.main] === "X") o.main = true;
+        if (f.sort && r[f.sort] != null) o.sort = +r[f.sort];
         if (withQty) o.q[i] = (o.q[i] || 0) + (+r[f.qty] || 0);
         o.v[i] = (o.v[i] || 0) + +r[f.value] / D;
       });
@@ -327,7 +341,9 @@ sap.ui.define([], function () {
       return [...m.values()];
     };
 
-    const brands = monthly(bR, F.brands, (r) => r[F.brands.brand], true);
+    const brands = monthly(bR, F.brands, (r) => r[F.brands.brand], true).sort(
+      (a, b) => a.sort - b.sort || String(a.n).localeCompare(String(b.n)),
+    );
     const exp = monthly(eR, F.expenses, (r) => r[F.expenses.label], false).map(
       (x) => ({ n: x.n, v: x.v }),
     );
@@ -584,6 +600,7 @@ sap.ui.define([], function () {
         return {
           n: b.n,
           main: b.main,
+          sort: b.sort,
           pq: pre ? sumArr(b.q, 0, pi - 1) : null,
           pv: pre ? sumArr(b.v, 0, pi - 1) : null,
           cq: b.q[pi],
@@ -593,7 +610,7 @@ sap.ui.define([], function () {
         };
       })
       .filter((r) => r.tv != null)
-      .sort((a, b) => b.tv - a.tv);
+      .sort((a, b) => a.sort - b.sort || b.tv - a.tv);
     const anyMain = all.some((r) => r.main);
     const rows = anyMain ? all.filter((r) => r.main) : all.slice(),
       rest = anyMain ? all.filter((r) => !r.main) : [];
