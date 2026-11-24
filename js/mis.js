@@ -68,7 +68,19 @@
    1. Brand-wise tile and Brand-wise popup are now sorted by SortOrder (from ZMIS_BRAND_CFG-SORT_ORDER via
       ZC_MIS_BrandSales), not by value. Reason: the customer's PDF has a fixed brand sequence
       (Crompton, Dharani, Grundfos, Paranaa, Kirloskar, SFL, then Spares/Services).
-      Spares/Services = 9000, unlisted brands = 9999 (set in ZI_MIS_SalesBase). Tie-break: value on the tile, name in the popup.*/
+      Spares/Services = 9000, unlisted brands = 9999 (set in ZI_MIS_SalesBase). Tie-break: value on the tile, name in the popup.
+      
+       CHANGE LOG (24 Nov 2026):
+   1. Month-wise Sales . FY Comparison popup (ytdModal) re-laid out like the customer's sheet: one block per fiscal year,
+      CURRENT FY ON TOP, previous FY below. Each block = month headings (Apr-26 ... Mar-27) + Total, then the rows
+      "Sales - Qty" and "Sales - Value (<unit>)" one below the other. Total = Apr to the selected month for the current FY,
+      full year for the previous FY. Months after the selected month stay blank in the current FY.
+      The sales return rows (already deducted above) stay as grey memo rows under each block.
+      Reason: the customer's sheet shows qty and value together per year, newest year first, so it can be compared line by line.
+      The old "Change %" rows and the YTD / Full year columns are gone with this layout.
+   2. Brand-wise tile: nothing changed. Brands that are not listed in ZMIS_BRAND_CFG were already grouped as "Others".
+
+   ------------------------------------------------------------------------------------------------- */
 
 sap.ui.define([], function () {
   "use strict";
@@ -676,65 +688,34 @@ sap.ui.define([], function () {
     const { d, fy, pi } = STATE,
       u = unitInfo(),
       S = d.sales;
-    const py = `${+fy.slice(0, 4) - 1}-${+fy.slice(5) - 1}`,
-      a = `FY ${py.slice(2, 4)}-${py.slice(7)}`,
-      b = `FY ${fy.slice(2, 4)}-${fy.slice(7)}`;
-    const cols = MONTHS.map((m, i) => ({
-      pq: S.pq[i],
-      cq: i <= pi ? S.cq[i] : null,
-      pv: S.pv[i],
-      cv: i <= pi ? S.cv[i] : null,
-      prq: S.prq[i],
-      crq: i <= pi ? S.crq[i] : null,
-      prv: S.prv[i],
-      crv: i <= pi ? S.crv[i] : null,
-    }));
-    cols.push({
-      pq: sumArr(S.pq, 0, pi),
-      cq: sumArr(S.cq, 0, pi),
-      pv: sumArr(S.pv, 0, pi),
-      cv: sumArr(S.cv, 0, pi),
-      prq: sumArr(S.prq, 0, pi),
-      crq: sumArr(S.crq, 0, pi),
-      prv: sumArr(S.prv, 0, pi),
-      crv: sumArr(S.crv, 0, pi),
-    }); // YTD
-    cols.push({
-      pq: sumArr(S.pq),
-      cq: null,
-      pv: sumArr(S.pv),
-      cv: null,
-      prq: sumArr(S.prq),
-      crq: null,
-      prv: sumArr(S.prv),
-      crv: null,
-    }); // full prev year
-    const heads = [...MONTHS, `YTD ${range(pi)}`, "Full year"];
-    const cls = (i) => (i >= 12 ? ' class="ytdc"' : "");
-    const row = (label, f) =>
-      `<tr><td>${label}</td>${cols.map((c, i) => `<td${cls(i)}>${f(c)}</td>`).join("")}</tr>`;
-    const grp = (t) =>
-      `<tr class="grprow"><td colspan="${cols.length + 1}">${t}</td></tr>`;
+    const py = `${+fy.slice(0, 4) - 1}-${+fy.slice(5) - 1}`;
+    const num = (x) => (x == null ? "" : nfIN(x, 0));
+    const val = (x) => (x == null ? "" : nfIN(x * u.f, u.dp));
+
+    /* last = last month index that is shown and totalled (selected month for the current FY, 11 for the previous FY) */
+    const block = (f, q, v, rq, rv, last) => {
+      const idx = MONTHS.map((_, i) => i);
+      const row = (label, a, fmt, memo) =>
+        `<tr${memo ? ' class="memo"' : ""}><td>${label}</td>` +
+        idx.map((i) => `<td>${fmt(i <= last ? a[i] : null)}</td>`).join("") +
+        `<td class="ytdc">${fmt(sumArr(a, 0, last))}</td></tr>`;
+      return (
+        `<table class="dense"><tr><th>FY ${f}</th>${idx.map((i) => `<th>${mLabel(f, i)}</th>`).join("")}<th class="ytdc">Total</th></tr>` +
+        row("Sales - Qty", q, num) +
+        row(`Sales - Value (${u.name})`, v, val) +
+        row("Sales return - Qty (already deducted)", rq, num, true) +
+        row("Sales return - Value (already deducted)", rv, val, true) +
+        "</table>"
+      );
+    };
+
     const h =
-      `<table class="dense"><tr><th></th>${heads.map((t, i) => `<th${cls(i)}>${t}</th>`).join("")}</tr>` +
-      grp("Qty (numbers) · net of sales returns") +
-      row(a, (c) => nfIN(c.pq, 0)) +
-      row(b, (c) => nfIN(c.cq, 0)) +
-      row("Change", (c) => chg(c.cq, c.pq)) +
-      grp("Sales return qty (already deducted above)") +
-      row(a, (c) => nfIN(c.prq, 0)) +
-      row(b, (c) => nfIN(c.crq, 0)) +
-      grp(`Value (${u.name}) · net of sales returns`) +
-      row(a, (c) => money(c.pv)) +
-      row(b, (c) => money(c.cv)) +
-      row("Change", (c) => chg(c.cv, c.pv)) +
-      grp(`Sales return value (${u.name}, already deducted above)`) +
-      row(a, (c) => money(c.prv)) +
-      row(b, (c) => money(c.crv)) +
-      "</table>";
+      block(fy, S.cq, S.cv, S.crq, S.crv, pi) +
+      `<div style="height:16px"></div>` +
+      block(py, S.pq, S.pv, S.prq, S.prv, 11);
     openModal(
       "Month-wise Sales · FY Comparison",
-      `Qty in numbers · Value in ${u.name} · net of sales returns, returns listed separately`,
+      `Qty in numbers · Value in ${u.name} · net of sales returns, returns listed separately · current year on top`,
       h,
     );
   }
