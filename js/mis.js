@@ -692,17 +692,27 @@ sap.ui.define([], function () {
     const num = (x) => (x == null ? "" : nfIN(x, 0));
     const val = (x) => (x == null ? "" : nfIN(x * u.f, u.dp));
 
-    /* last = last month index that is shown and totalled (selected month for the current FY, 11 for the previous FY) */
-    const block = (f, q, v, rq, rv, last) => {
+    /* last = last month index that is shown and totalled (selected month for the current FY, 11 for the previous FY).
+       cmp (current FY block only) = previous FY qty / value arrays, used for the Change % rows. */
+    const block = (f, q, v, rq, rv, last, cmp) => {
       const idx = MONTHS.map((_, i) => i);
       const row = (label, a, fmt, memo) =>
         `<tr${memo ? ' class="memo"' : ""}><td>${label}</td>` +
         idx.map((i) => `<td>${fmt(i <= last ? a[i] : null)}</td>`).join("") +
         `<td class="ytdc">${fmt(sumArr(a, 0, last))}</td></tr>`;
+      /* Change % vs same month of the previous FY; Total = Apr to selected month in both years */
+      const chgRow = (label, cur, prev) =>
+        `<tr><td>${label}</td>` +
+        idx
+          .map((i) => `<td>${i <= last ? chg(cur[i], prev[i]) : ""}</td>`)
+          .join("") +
+        `<td class="ytdc">${chg(sumArr(cur, 0, last), sumArr(prev, 0, last))}</td></tr>`;
       return (
         `<table class="dense"><tr><th>FY ${f}</th>${idx.map((i) => `<th>${mLabel(f, i)}</th>`).join("")}<th class="ytdc">Total</th></tr>` +
         row("Sales - Qty", q, num) +
         row(`Sales - Value (${u.name})`, v, val) +
+        (cmp ? chgRow("Change % - Qty", q, cmp.q) : "") +
+        (cmp ? chgRow("Change % - Value", v, cmp.v) : "") +
         row("Sales return - Qty (already deducted)", rq, num, true) +
         row("Sales return - Value (already deducted)", rv, val, true) +
         "</table>"
@@ -710,7 +720,7 @@ sap.ui.define([], function () {
     };
 
     const h =
-      block(fy, S.cq, S.cv, S.crq, S.crv, pi) +
+      block(fy, S.cq, S.cv, S.crq, S.crv, pi, { q: S.pq, v: S.pv }) +
       `<div style="height:16px"></div>` +
       block(py, S.pq, S.pv, S.prq, S.prv, 11);
     openModal(
