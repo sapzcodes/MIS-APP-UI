@@ -486,7 +486,7 @@ sap.ui.define([], function () {
       },
     ];
     return `<div class="card kpi"><h2>Payables &amp; Receivables</h2>
-    <div class="meta">As on today · Value in ${u.name} · tap Receivable for customer group breakup</div>
+    <div class="meta">As on today · tap Receivable for customer group breakup</div>
     <div class="scroll"><table class="mini par">
       <tr><th></th><th>Total</th><th>0 to 60 days</th><th>&gt;60 to &lt;120</th><th>&gt;120</th></tr>
       ${rows
@@ -547,8 +547,7 @@ sap.ui.define([], function () {
       cv: d.sales.cv[i] || 0,
     }));
     const py = `${+fy.slice(0, 4) - 1}-${+fy.slice(5) - 1}`;
-    $("chartMeta").textContent =
-      `FY ${fy} vs FY ${py}, ${range(pi)} · Value in ${u.name}`;
+    $("chartMeta").textContent = `FY ${fy} vs FY ${py}, ${range(pi)}`;
     $("lgPrev").textContent = `FY ${py.slice(2, 4)}-${py.slice(7)}`;
     $("lgCur").textContent = `FY ${fy.slice(2, 4)}-${fy.slice(7)}`;
 
@@ -646,8 +645,7 @@ sap.ui.define([], function () {
 
   /* Purchase & Expenses card: Apr→previous month | current month | YTD total */
   function renderExpenses(d, fy, pi, u) {
-    $("expMeta").textContent =
-      `${range(pi)} ${calYear(fy, pi)} · Value in ${u.name}`;
+    $("expMeta").textContent = `${range(pi)} ${calYear(fy, pi)}`;
     const pt = d.purchase.total,
       pre = pi > 0;
     const preOf = (r) => (pre ? sumArr(r.v, 0, pi - 1) : null);
@@ -788,7 +786,7 @@ sap.ui.define([], function () {
       const row = d.purchase.rows.find((r) => r.n === n.row);
       h += `<p class="note">${mLabel(fy, n.idx)} ${n.row} ${money(row.v[n.idx])} includes: ${n.items.map(([k, v]) => `${k} ${money(v)}`).join(" · ")}</p>`;
     }
-    openModal("Purchase & Expenses", `${range(pi)} · Value in ${u.name}`, h);
+    openModal("Purchase & Expenses", `${range(pi)}`, h);
   }
 
   /* Receivable row -> Receivables ageing by CUSTOMER GROUP (one line per group, largest first) */
@@ -798,7 +796,7 @@ sap.ui.define([], function () {
     const rows = [...d.debtors.rows].sort((a, b) => (b.t || 0) - (a.t || 0));
     openModal(
       "Receivables · by Customer Group",
-      `Open items as on today · Value in ${u.name}`,
+      `Open items as on today`,
       `<table class="dense">${ageTable(rows, d.debtors.total, "Customer Group")}</table>`,
     );
   }
