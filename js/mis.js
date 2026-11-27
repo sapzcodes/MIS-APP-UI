@@ -80,6 +80,11 @@
       The old "Change %" rows and the YTD / Full year columns are gone with this layout.
    2. Brand-wise tile: nothing changed. Brands that are not listed in ZMIS_BRAND_CFG were already grouped as "Others".
 
+   CHANGE LOG (27 Nov 2026):
+1. Ageing buckets are now 0-30, 31-45, 46-60, 61-90, >90 on the Payables & Receivables tile (>90 = 91-120 + >120).
+   The Receivable popup shows 91-120 and Above 120 separately, plus Adv / PDC.
+   Reason: customer wants these buckets. Data: new MIS-only table functions ZFI_TF_CUST_AGEING_MIS / ZFI_TF_VENDOR_AGEING_MIS
+   (thresholds 30/45/60/90/120), TR PSDK910956. Debtors now return B1..B7 (B6 >120, B7 Adv / PDC), creditors B1..B6.
    ------------------------------------------------------------------------------------------------- */
 
 sap.ui.define([], function () {
@@ -181,7 +186,7 @@ sap.ui.define([], function () {
     "February",
     "March",
   ];
-  const BUCKETS = ["0–30", "31–60", "61–90", "91–120", "Above 120"]; // B1 incl. not due
+  const BUCKETS = ["0–30", "31–45", "46–60", "61–90", "91–120", "Above 120"]; // B1..B6 (popup), B1 incl. not due
   const ADV = "Adv / PDC"; // 6th debtors bucket (B6): advances + post-dated cheques, shown as credit (negative)
 
   /* Heading list for an ageing table: 6th column only when the data has 6 buckets */
@@ -205,7 +210,7 @@ sap.ui.define([], function () {
   function finish(d, name) {
     const sb = (b) => b.reduce((s, x) => s + (x || 0), 0);
     const col = (rows) =>
-      [0, 1, 2, 3, 4, 5].map((i) =>
+      [0, 1, 2, 3, 4, 5, 6].map((i) =>
         rows.reduce((s, r) => s + (r.b[i] || 0), 0),
       ); // 6 indexes: B6 (advance + PDC) must be in the total
     const fix = (t) => {
@@ -341,7 +346,7 @@ sap.ui.define([], function () {
       });
       return [...m.values()];
     };
-    const bucketed = (rows, f, keyOf, n = 5) => {
+    const bucketed = (rows, f, keyOf, n = 6) => {
       // group by key -> n bucket values (debtors 6 incl. B6 advance + PDC, creditors 5)
       const m = new Map();
       rows.forEach((r) => {
@@ -360,7 +365,7 @@ sap.ui.define([], function () {
       (x) => ({ n: x.n, v: x.v }),
     );
     const crRows = bucketed(cR, F.creditors, (r) => r[F.creditors.type]);
-    const pick = (k) => crRows.find((x) => x.n === k) || { b: nulls(5) };
+    const pick = (k) => crRows.find((x) => x.n === k) || { b: nulls(6) };
 
     return {
       counts: {
@@ -375,7 +380,7 @@ sap.ui.define([], function () {
       purchase: { rows: exp },
       expNote: null,
       debtors: {
-        rows: bucketed(dR, F.debtors, (r) => r[F.debtors.party], 6),
+        rows: bucketed(dR, F.debtors, (r) => r[F.debtors.party], 7),
       },
       creditors: { cr: { b: pick("CR").b }, adv: { b: pick("ADV").b } },
     };
@@ -453,7 +458,7 @@ sap.ui.define([], function () {
   function ageTable(rows, total, firstHead) {
     const H = ageHead(total.b.length);
     const cell = (x, i) =>
-      `<td class="${i === 4 && x ? "down" : ""}">${x == null ? "–" : money(x)}</td>`;
+      `<td class="${(i === 4 || i === 5) && x ? "down" : ""}">${x == null ? "–" : money(x)}</td>`;
     return (
       `<tr><th>${firstHead}</th>${H.map((b) => `<th>${b}</th>`).join("")}<th>Total</th></tr>` +
       rows
@@ -470,11 +475,15 @@ sap.ui.define([], function () {
      0 to 60 = total - mid - high, so the receivables Adv / PDC bucket (B6) falls into it (same as the P&L dashboard).
      Only the Receivable row is clickable. */
   function parTile(d, u) {
+    /* tile: 0–30, 31–45, 46–60, 61–90, >90 (= 91–120 + >120). 0–30 = total − the other buckets,
+       so receivables Adv / PDC (B7) still falls into it, like before. */
     const split = (b, t) => {
       const a = (i) => b[i] || 0,
-        hi = a(4),
-        mid = a(2) + a(3);
-      return { t, low: t - mid - hi, mid, hi };
+        b2 = a(1),
+        b3 = a(2),
+        b4 = a(3),
+        hi = a(4) + a(5);
+      return { t, c1: t - b2 - b3 - b4 - hi, c2: b2, c3: b3, c4: b4, c5: hi };
     };
     const rows = [
       {
@@ -500,12 +509,12 @@ sap.ui.define([], function () {
     return `<div class="card kpi"><h2>Payables &amp; Receivables</h2>
     <div class="meta">As on today · tap Receivable for customer group breakup</div>
     <div class="scroll"><table class="mini par">
-      <tr><th></th><th>Total</th><th>0 to 60 days</th><th>&gt;60 to &lt;120</th><th>&gt;120</th></tr>
+      <tr><th></th><th>Total</th><th>0–30</th><th>31–45</th><th>46–60</th><th>61–90</th><th>&gt;90</th></tr>
       ${rows
         .map(
           (r) =>
             `<tr class="${r.act ? "rowclick" : ""}"${r.act ? ` data-act="${r.act}"` : ""}><td>${r.label}</td>` +
-            [r.t, r.low, r.mid, r.hi]
+            [r.t, r.c1, r.c2, r.c3, r.c4, r.c5]
               .map((x) => `<td class="${r.cls}"><b>${r.fmt(x)}</b></td>`)
               .join("") +
             `</tr>`,
