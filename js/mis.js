@@ -2,6 +2,14 @@
    Login: none here. The Android shell adds the SAP login and sap-client to every /sap/* call.
    Mounted by controller/App.controller.js into <div id="misRoot">.
 
+   CHANGE LOG (28 Nov 2026):
+   1. Sales return is hidden from the UI for now: the memo rows in Month-wise Sales . FY Comparison (ytdModal) and the
+      "Gross Sales" / "Less: Sales Return" rows in the Brand-wise popup (brandMatrix) are not drawn.
+      Done with CONFIG.SHOW_RETURNS = false. Set it to true to show them again.
+      The figures themselves are unchanged: all sales are still NET of returns (= P&L), and ReturnQty / ReturnValue
+      are still fetched, so nothing needs to change in the CDS views.
+      Reason: returns are not wanted on the screen for now.
+
    CHANGE LOG (16 Nov 2026, later):
    1. Sales are now NET of sales returns everywhere on the main screen (Sales Value, Sales Qty and YTD tiles, the
       monthly chart, the Brand-wise tile), so they tie to the P&L (zmm_cds_pl_summary total_sales_*).
@@ -95,6 +103,7 @@ sap.ui.define([], function () {
    ===================================================================== */
   const CONFIG = {
     ODATA_VERSION: "v4", // 'v2' -> d.results | 'v4' -> value
+    SHOW_RETURNS: false, // false = sales return rows are hidden in the popups (figures stay net of returns)
     BASE_URL:
       "/sap/opu/odata4/sap/zsrvb_mis_report/srvd/sap/zsd_mis_report/0001", // overwritten from manifest dataSource "mainService"
     ENTITIES: {
@@ -692,7 +701,8 @@ sap.ui.define([], function () {
   }
 
   /* Sales Value, Sales Qty and YTD tiles -> Month-wise Sales · FY Comparison (months are the column headings).
-     The qty / value blocks are net of returns (same as the tiles); the returns are listed separately below each block. */
+     The qty / value blocks are net of returns (same as the tiles); the returns are listed separately below each block
+     only when CONFIG.SHOW_RETURNS is true. */
   function ytdModal() {
     const { d, fy, pi } = STATE,
       u = unitInfo(),
@@ -722,8 +732,10 @@ sap.ui.define([], function () {
         row(`Sales - Value (${u.name})`, v, val) +
         (cmp ? chgRow("Change % - Qty", q, cmp.q) : "") +
         (cmp ? chgRow("Change % - Value", v, cmp.v) : "") +
-        row("Sales return - Qty (already deducted)", rq, num, true) +
-        row("Sales return - Value (already deducted)", rv, val, true) +
+        (CONFIG.SHOW_RETURNS
+          ? row("Sales return - Qty (already deducted)", rq, num, true) +
+            row("Sales return - Value (already deducted)", rv, val, true)
+          : "") +
         "</table>"
       );
     };
@@ -734,13 +746,14 @@ sap.ui.define([], function () {
       block(py, S.pq, S.pv, S.prq, S.prv, 11);
     openModal(
       "Month-wise Sales · FY Comparison",
-      `Qty in numbers · Value in ${u.name} · net of sales returns, returns listed separately · current year on top`,
+      `Qty in numbers · Value in ${u.name} · net of sales returns${CONFIG.SHOW_RETURNS ? ", returns listed separately" : ""} · current year on top`,
       h,
     );
   }
 
   /* Brand-wise card -> month matrix with Qty + Value per month (ALL brands).
-     Brand rows are net of returns; below them: Gross Sales, Less: Sales Return, Net Sales (= Grand Total on the tile). */
+     Brand rows are net of returns; below them (only when CONFIG.SHOW_RETURNS is true): Gross Sales, Less: Sales Return,
+     then the total row (= Grand Total on the tile). */
   function brandMatrix() {
     const { d, fy, pi } = STATE,
       u = unitInfo(),
@@ -756,9 +769,11 @@ sap.ui.define([], function () {
       if (t.v == null) return;
       h += `<tr><td>${b.n}</td>${idx.map((i) => pair(b.q[i], b.v[i])).join("")}${pair(t.q, t.v)}</tr>`;
     });
-    h += `<tr class="memo"><td>Gross Sales</td>${idx.map((i) => pair(addN(S.cq[i], S.crq[i]), addN(S.cv[i], S.crv[i]))).join("")}${pair(addN(tot(S.cq), tot(S.crq)), addN(tot(S.cv), tot(S.crv)))}</tr>`;
-    h += `<tr class="memo"><td>Less: Sales Return</td>${idx.map((i) => pair(S.crq[i], S.crv[i])).join("")}${pair(tot(S.crq), tot(S.crv))}</tr>`;
-    h += `<tr class="total"><td>Net Sales (Grand Total)</td>${idx.map((i) => pair(S.cq[i], S.cv[i])).join("")}${pair(tot(S.cq), tot(S.cv))}</tr>`;
+    if (CONFIG.SHOW_RETURNS) {
+      h += `<tr class="memo"><td>Gross Sales</td>${idx.map((i) => pair(addN(S.cq[i], S.crq[i]), addN(S.cv[i], S.crv[i]))).join("")}${pair(addN(tot(S.cq), tot(S.crq)), addN(tot(S.cv), tot(S.crv)))}</tr>`;
+      h += `<tr class="memo"><td>Less: Sales Return</td>${idx.map((i) => pair(S.crq[i], S.crv[i])).join("")}${pair(tot(S.crq), tot(S.crv))}</tr>`;
+    }
+    h += `<tr class="total"><td>${CONFIG.SHOW_RETURNS ? "Net Sales (Grand Total)" : "Grand Total"}</td>${idx.map((i) => pair(S.cq[i], S.cv[i])).join("")}${pair(tot(S.cq), tot(S.cv))}</tr>`;
     openModal(
       `Brand-wise Sales`,
       `${range(pi)} · Qty in numbers · Value in ${u.name} · brand rows are net of sales returns`,
